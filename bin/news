@@ -1,0 +1,106 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * iode-adapter-news — coleta entradas de feeds RSS, RDF e Atom.
+ *
+ * Fala o contrato de adaptador do iode, versão 1: requisição JSON no stdin,
+ * resposta JSON no stdout, resultado no código de saída.
+ *
+ * A lista de feeds vem de config.feeds na requisição. Exemplo de uso manual:
+ *
+ *   echo '{"contract":1,"project":"noticias","path":"/tmp","since":null,
+ *          "config":{"feeds":["https://exemplo.org/feed.xml"]}}' | bin/news
+ */
+
+namespace Iode\News;
+
+require __DIR__ . '/../src/Contract.php';
+require __DIR__ . '/../src/Entry.php';
+require __DIR__ . '/../src/Feed.php';
+require __DIR__ . '/../src/Fetcher.php';
+
+exit(main($argv));
+
+/** @param list<string> $argv */
+function main(array $argv): int
+{
+    if (in_array('--version', $argv, true)) {
+        fwrite(STDOUT, "iode-adapter-news 1.0, contrato " . Contract::VERSION . "\n");
+        return Contract::OK;
+    }
+
+    try {
+        $request = Contract::readRequest((string) stream_get_contents(STDIN));
+    } catch (ContractError $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        return $e->exitCode;
+    }
+
+    $feeds = $request['config']['feeds'] ?? null;
+    if (!is_array($feeds) || $feeds === []) {
+        fwrite(STDERR, "config.feeds ausente ou vazio: nada a coletar\n");
+        return Contract::BAD_CONFIG;
+    }
+
+    $timeout = (int) ($request['config']['timeout_seconds'] ?? 15);
+    $fetcher = new Fetcher($timeout > 0 ? $timeout : 15);
+    $now = new \DateTimeImmutable('now');
+
+    $items = [];
+    $warnings = [];
+    $seenKeys = [];
+    $failed = 0;
+
+    foreach ($feeds as $url) {
+        if (!is_string($url) || trim($url) === '') {
+            $warnings[] = 'entrada de feed ignorada: não é uma URL';
+            continue;
+        }
+        $url = trim($url);
+
+        try {
+            $entries = Feed::parse($fetcher->get($url), $url);
+        } catch (FetchError | ParseError $e) {
+            // Uma fonte quebrada não derruba as outras. Ver princípio 6 do
+            // README do iode: falhar alto, mas sem corromper o resto.
+            $failed++;
+            $warnings[] = sprintf('%s: %s', $url, $e->getMessage());
+            continue;
+        }
+
+        foreach ($entries as $entry) {
+            // since vem da última coleta bem-sucedida. Entrada sem data cai
+            // aqui como nova, o que é o comportamento seguro: melhor repetir
+            // um item do que perdê-lo.
+            if ($request['since'] !== null && $entry->published !== null
+                && $entry->published <= $request['since']) {
+                continue;
+            }
+
+            $item = $entry->toItem($now);
+            if (isset($seenKeys[$item['key']])) {
+                continue; // mesma entrada em dois feeds
+            }
+            $seenKeys[$item['key']] = true;
+            $items[] = $item;
+        }
+    }
+
+    // Todas as fontes falharam: é erro recuperável, o motor tenta de novo.
+    if ($failed === count($feeds)) {
+        fwrite(STDERR, "todos os " . $failed . " feeds falharam\n");
+        return Contract::RETRYABLE;
+    }
+
+    try {
+        fwrite(STDOUT, Contract::writeResponse($items, $warnings) . "\n");
+    } catch (\JsonException $e) {
+        fwrite(STDERR, 'serializando resposta: ' . $e->getMessage() . "\n");
+        return Contract::RETRYABLE;
+    }
+
+    return Contract::OK;
+}
