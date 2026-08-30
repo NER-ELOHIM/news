@@ -54,17 +54,21 @@ cp -r src ~/.config/iode/adapters/
 E no `config.toml` do `iode`:
 
 ```toml
-[[projects]]
+[[sources]]
 name = "noticias"
-path = "~/.local/share/iode/feeds/noticias"   # diretório vazio; ver nota abaixo
 adapters = ["news"]
+
+[sources.config]
+feeds = ["https://exemplo.org/feed.xml"]
 ```
 
-> **Nota sobre o contrato.** O `CONTRATOS.md` do `iode` invoca adaptador por
-> projeto, com `cwd` no diretório dele, mas prevê `kind = "external"` para fonte
-> de RSS e API — que não tem diretório local. O diretório vazio acima contorna
-> isso. O conserto limpo seria um bloco `[[sources]]` separado, ou `path`
-> opcional quando todos os adaptadores forem externos.
+> **Fonte externa, não projeto.** Feed não tem diretório local, então ele entra
+> em `[[sources]]`, sem `path` e sem `writable`. Na requisição, `path` chega como
+> string vazia. Ver D6 em `docs/DECISOES.md` do `iode` e a seção **Fontes
+> externas** em `docs/CONTRATOS.md`.
+>
+> O bloco passa a ser lido pelo motor na fase 1. Até lá, use o adaptador na mão,
+> pelo `stdin`.
 
 ## Testes
 
