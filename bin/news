@@ -4,23 +4,27 @@
 declare(strict_types=1);
 
 /**
- * iode-adapter-news — coleta entradas de feeds RSS, RDF e Atom.
+ * news — collects entries from RSS, RDF and Atom feeds, grouped by topic.
  *
- * Fala o contrato de adaptador do iode, versão 1: requisição JSON no stdin,
- * resposta JSON no stdout, resultado no código de saída.
+ * Speaks version 1 of the engine's adapter contract: a JSON request on stdin,
+ * a JSON response on stdout, the outcome in the exit code.
  *
- * A lista de feeds vem de config.feeds na requisição. Exemplo de uso manual:
+ * It only collects and filters. Selecting, writing and delivering the edition
+ * belongs to `bin/digest`, because an adapter must be idempotent: running
+ * `iode sync` twice must not send two emails.
  *
- *   echo '{"contract":1,"project":"noticias","path":"/tmp","since":null,
- *          "config":{"feeds":["https://exemplo.org/feed.xml"]}}' | bin/news
+ *   echo '{"contract":1,"project":"news","path":"","since":null,
+ *          "config":{"categories":["markets","saas"]}}' | bin/news
  */
 
 namespace Iode\News;
 
 require __DIR__ . '/../src/Contract.php';
+require __DIR__ . '/../src/Catalog.php';
 require __DIR__ . '/../src/Entry.php';
 require __DIR__ . '/../src/Feed.php';
 require __DIR__ . '/../src/Fetcher.php';
+require __DIR__ . '/../src/Prefilter.php';
 
 exit(main($argv));
 
@@ -28,25 +32,30 @@ exit(main($argv));
 function main(array $argv): int
 {
     if (in_array('--version', $argv, true)) {
-        fwrite(STDOUT, "iode-adapter-news 1.0, contrato " . Contract::VERSION . "\n");
+        fwrite(STDOUT, "iode-adapter-news 2.0, contrato " . Contract::VERSION . "\n");
+        return Contract::OK;
+    }
+    if (in_array('--topics', $argv, true)) {
+        foreach (Catalog::topics() as $topic) {
+            fwrite(STDOUT, sprintf("%-20s %2d feeds  %s\n", $topic, count(Catalog::feeds($topic)), Catalog::label($topic)));
+        }
         return Contract::OK;
     }
 
     try {
         $request = Contract::readRequest((string) stream_get_contents(STDIN));
+        $sources = resolveSources($request['config']);
     } catch (ContractError $e) {
         fwrite(STDERR, $e->getMessage() . "\n");
         return $e->exitCode;
     }
 
-    $feeds = $request['config']['feeds'] ?? null;
-    if (!is_array($feeds) || $feeds === []) {
-        fwrite(STDERR, "config.feeds ausente ou vazio: nada a coletar\n");
-        return Contract::BAD_CONFIG;
-    }
+    $config = $request['config'];
+    $timeout = intOption($config, 'timeout_seconds', 15);
+    $budget = intOption($config, 'budget_seconds', 45);
+    $parallel = intOption($config, 'max_parallel', 8);
 
-    $timeout = (int) ($request['config']['timeout_seconds'] ?? 15);
-    $fetcher = new Fetcher($timeout > 0 ? $timeout : 15);
+    $fetcher = new Fetcher($timeout, $parallel, $budget);
     $now = new \DateTimeImmutable('now');
 
     $items = [];
@@ -54,53 +63,196 @@ function main(array $argv): int
     $seenKeys = [];
     $failed = 0;
 
-    foreach ($feeds as $url) {
-        if (!is_string($url) || trim($url) === '') {
-            $warnings[] = 'entrada de feed ignorada: não é uma URL';
+    $responses = $fetcher->getMany(array_keys($sources));
+
+    foreach ($sources as $url => $topic) {
+        $body = $responses[$url] ?? new FetchError('sem resposta');
+
+        if ($body instanceof FetchError) {
+            // A broken source does not take the others down. Principle 6 of
+            // the engine: fail loudly, without corrupting the rest.
+            $failed++;
+            $warnings[] = sprintf('%s: %s', $url, $body->getMessage());
             continue;
         }
-        $url = trim($url);
 
         try {
-            $entries = Feed::parse($fetcher->get($url), $url);
-        } catch (FetchError | ParseError $e) {
-            // Uma fonte quebrada não derruba as outras. Ver princípio 6 do
-            // README do iode: falhar alto, mas sem corromper o resto.
+            $entries = Feed::parse($body, $url);
+        } catch (ParseError $e) {
             $failed++;
             $warnings[] = sprintf('%s: %s', $url, $e->getMessage());
             continue;
         }
 
         foreach ($entries as $entry) {
-            // since vem da última coleta bem-sucedida. Entrada sem data cai
-            // aqui como nova, o que é o comportamento seguro: melhor repetir
-            // um item do que perdê-lo.
+            // `since` comes from the last successful collection. An entry
+            // with no date falls through as new, which is the safe behaviour:
+            // better to repeat an item than to lose one.
             if ($request['since'] !== null && $entry->published !== null
                 && $entry->published <= $request['since']) {
                 continue;
             }
 
-            $item = $entry->toItem($now);
+            $item = $entry->toItem($now, $topic);
             if (isset($seenKeys[$item['key']])) {
-                continue; // mesma entrada em dois feeds
+                continue; // the same entry in two feeds
             }
             $seenKeys[$item['key']] = true;
             $items[] = $item;
         }
     }
 
-    // Todas as fontes falharam: é erro recuperável, o motor tenta de novo.
-    if ($failed === count($feeds)) {
-        fwrite(STDERR, "todos os " . $failed . " feeds falharam\n");
+    // Every source failed: a retryable error, so the engine will try again.
+    if ($failed === count($sources)) {
+        fwrite(STDERR, "all " . $failed . " feeds failed\n");
         return Contract::RETRYABLE;
     }
 
+    // The cadence sets the window floor: an edition must see the whole span
+    // since the previous one, even in fast-moving topics, or the gap between
+    // two editions disappears unnoticed. See Prefilter.
+    $floor = intOption($config, 'window_floor_hours', cadenceFloor((string) ($config['cadence'] ?? 'daily')));
+
+    $prefilter = new Prefilter(
+        intOption($config, 'window_hours', 36),
+        // The caps follow the floor: a wider window brings more material, and
+        // keeping the daily cap would throw away exactly what the longer
+        // cadence went looking for.
+        intOption($config, 'per_feed_cap', $floor >= 168 ? 20 : ($floor > 0 ? 12 : 8)),
+        intOption($config, 'per_topic_cap', $floor >= 168 ? 40 : ($floor > 0 ? 32 : 25)),
+        $floor,
+    );
+    $filtered = $prefilter->apply($items, $now);
+
+    $dropped = array_sum($filtered['dropped']);
+    if ($dropped > 0) {
+        // Reported as a warning rather than silently: without this, a badly
+        // tuned filter eats the edition and nobody learns why it came out
+        // empty.
+        $warnings[] = sprintf(
+            'prefilter: %d of %d items dropped (%s)',
+            $dropped,
+            count($items),
+            summariseDropped($filtered['dropped'])
+        );
+    }
+
     try {
-        fwrite(STDOUT, Contract::writeResponse($items, $warnings) . "\n");
+        fwrite(STDOUT, Contract::writeResponse($filtered['items'], $warnings) . "\n");
     } catch (\JsonException $e) {
-        fwrite(STDERR, 'serializando resposta: ' . $e->getMessage() . "\n");
+        fwrite(STDERR, 'serialising the response: ' . $e->getMessage() . "\n");
         return Contract::RETRYABLE;
     }
 
     return Contract::OK;
+}
+
+/**
+ * Builds the url => topic map from the configuration.
+ *
+ * `categories` pulls from the verified catalog; `feeds` accepts one-off URLs
+ * and keeps working as it did in version 1, because an existing configuration
+ * must not break on an adapter upgrade.
+ *
+ * @param array<string,mixed> $config
+ * @return array<string,string>
+ * @throws ContractError
+ */
+function resolveSources(array $config): array
+{
+    $topics = $config['categories'] ?? [];
+    if (!is_array($topics)) {
+        throw new ContractError('config.categories is not a list', Contract::BAD_CONFIG);
+    }
+
+    $unknown = [];
+    $requested = [];
+    foreach ($topics as $topic) {
+        if (!is_string($topic)) {
+            continue;
+        }
+        if (!Catalog::exists($topic)) {
+            $unknown[] = $topic;
+            continue;
+        }
+        $requested[] = $topic;
+    }
+
+    if ($unknown !== []) {
+        // An error rather than a warning: a topic misspelled in the config
+        // would produce a silently incomplete edition, which is the worst
+        // possible outcome here.
+        throw new ContractError(
+            sprintf(
+                'unknown topic: %s. available: %s',
+                implode(', ', $unknown),
+                implode(', ', Catalog::topics())
+            ),
+            Contract::BAD_CONFIG
+        );
+    }
+
+    $sources = Catalog::resolve($requested);
+
+    foreach ($config['feeds'] ?? [] as $url) {
+        if (!is_string($url) || trim($url) === '') {
+            continue;
+        }
+        $sources[trim($url)] ??= Catalog::GENERAL;
+    }
+
+    if ($sources === []) {
+        throw new ContractError(
+            'nothing to collect: provide config.categories or config.feeds',
+            Contract::BAD_CONFIG
+        );
+    }
+
+    return $sources;
+}
+
+/**
+ * Window floor for a named cadence, in hours.
+ *
+ * The value is the interval between editions, not an arbitrary margin: with a
+ * floor shorter than the interval, whatever is published between two editions
+ * appears in neither. An unknown cadence counts as daily, the most
+ * conservative choice.
+ */
+function cadenceFloor(string $cadencia): int
+{
+    return match ($cadencia) {
+        'weekly' => 168,
+        // Mon/Wed/Fri has gaps of 48h, 48h and 72h. The floor is the LARGEST
+        // of them, otherwise Monday's edition loses whatever appeared between
+        // Friday and Saturday. The price is that the windows now overlap, and
+        // without a record of what was already sent the same item ships twice.
+        'thrice-weekly' => 72,
+        'alternate-days' => 48,
+        default => 0,             // daily: each topic uses its catalog window
+    };
+}
+
+/** @param array<string,mixed> $config */
+function intOption(array $config, string $key, int $default): int
+{
+    $value = $config[$key] ?? null;
+    if (!is_int($value) && !(is_string($value) && ctype_digit($value))) {
+        return $default;
+    }
+
+    return (int) $value > 0 ? (int) $value : $default;
+}
+
+/** @param array<string,int> $dropped */
+function summariseDropped(array $dropped): string
+{
+    $parts = [];
+    foreach ($dropped as $reason => $count) {
+        if ($count > 0) {
+            $parts[] = $reason . ': ' . $count;
+        }
+    }
+
+    return $parts === [] ? 'none' : implode(', ', $parts);
 }

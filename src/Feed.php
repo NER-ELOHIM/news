@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace Iode\News;
 
 /**
- * Lê RSS 2.0, RSS 1.0 (RDF) e Atom.
+ * Reads RSS 2.0, RSS 1.0 (RDF) and Atom.
  *
- * Feed do mundo real vem quebrado com frequência: CDATA aninhado, encoding
- * errado no cabeçalho, tag não fechada. Por isso o parse roda com recuperação
- * do libxml ligada, e um feed ruim vira aviso, não erro.
+ * Real-world feeds arrive broken often: nested CDATA, a wrong encoding in the
+ * header, an unclosed tag. So parsing runs with libxml recovery enabled, and a
+ * bad feed becomes a warning rather than an error.
  */
 final class Feed
 {
     private const ATOM_NS = 'http://www.w3.org/2005/Atom';
     private const DC_NS = 'http://purl.org/dc/elements/1.1/';
+    private const MEDIA_NS = 'http://search.yahoo.com/mrss/';
+    private const CONTENT_NS = 'http://purl.org/rss/1.0/modules/content/';
 
     /**
      * @return list<Entry>
@@ -23,7 +25,7 @@ final class Feed
     public static function parse(string $xml, string $sourceUrl): array
     {
         if (trim($xml) === '') {
-            throw new ParseError('resposta vazia');
+            throw new ParseError('empty response');
         }
 
         $previous = libxml_use_internal_errors(true);
@@ -41,7 +43,7 @@ final class Feed
         }
 
         if ($doc === false) {
-            throw new ParseError('XML irrecuperável');
+            throw new ParseError('unrecoverable XML');
         }
 
         $name = strtolower($doc->getName());
@@ -50,7 +52,7 @@ final class Feed
             $name === 'feed' => self::parseAtom($doc, $sourceUrl),
             $name === 'rss' => self::parseRss($doc, $sourceUrl),
             $name === 'rdf' => self::parseRdf($doc, $sourceUrl),
-            default => throw new ParseError('raiz <' . $doc->getName() . '> não é feed reconhecido'),
+            default => throw new ParseError('root <' . $doc->getName() . '> is not a recognised feed'),
         };
     }
 
@@ -60,7 +62,7 @@ final class Feed
         $entries = [];
         $doc->registerXPathNamespace('a', self::ATOM_NS);
 
-        // Feed Atom sem namespace declarado existe; o XPath cobre os dois casos.
+        // Atom feeds without a declared namespace exist; the XPath covers both.
         $nodes = $doc->xpath('//a:entry') ?: $doc->xpath('//entry') ?: [];
 
         foreach ($nodes as $node) {
@@ -84,6 +86,7 @@ final class Feed
                 author: trim((string) ($node->author->name ?? '')),
                 published: Contract::parseTimestamp($when),
                 sourceUrl: $sourceUrl,
+                image: self::image($node, $body),
             );
         }
 
@@ -102,7 +105,7 @@ final class Feed
         return $entries;
     }
 
-    /** RSS 1.0 põe os <item> na raiz do RDF, não dentro do <channel>. */
+    /** RSS 1.0 puts <item> at the RDF root, not inside <channel>. */
     private static function parseRdf(\SimpleXMLElement $doc, string $sourceUrl): array
     {
         $entries = [];
@@ -137,10 +140,66 @@ final class Feed
             author: $author,
             published: $when !== '' ? Contract::parseTimestamp($when) : null,
             sourceUrl: $sourceUrl,
+            image: self::image($node, (string) ($node->description ?? '')
+                . (string) ($node->children(self::CONTENT_NS)->encoded ?? '')),
         );
     }
 
-    /** Descrição de feed quase sempre vem com HTML dentro. Vira texto puro. */
+    /**
+     * Finds the entry's image, if there is one.
+     *
+     * Every feed family announces images differently, and none is required:
+     * RSS has <enclosure>, the Media RSS extension has <media:content> and
+     * <media:thumbnail>, and the rest simply embed an <img> in the description
+     * HTML. Half the catalog carries no image at all — which is why the
+     * edition has to look finished without one, not only with one.
+     */
+    private static function image(\SimpleXMLElement $node, string $html): string
+    {
+        $media = $node->children(self::MEDIA_NS);
+
+        foreach ([$media->content ?? [], $media->thumbnail ?? []] as $candidates) {
+            foreach ($candidates as $c) {
+                $tipo = (string) ($c['type'] ?? '');
+                $medium = (string) ($c['medium'] ?? '');
+                if ($tipo !== '' && !str_starts_with($tipo, 'image/')) {
+                    continue; // media:content also carries video and audio
+                }
+                if ($medium !== '' && $medium !== 'image') {
+                    continue;
+                }
+                if ($url = self::imageUrl((string) ($c['url'] ?? ''))) {
+                    return $url;
+                }
+            }
+        }
+
+        foreach ($node->enclosure ?? [] as $e) {
+            if (str_starts_with((string) ($e['type'] ?? ''), 'image/')
+                && $url = self::imageUrl((string) ($e['url'] ?? ''))) {
+                return $url;
+            }
+        }
+
+        if (preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $m)) {
+            return self::imageUrl(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        }
+
+        return '';
+    }
+
+    /**
+     * HTTPS only. An HTTP image inside an email triggers a mixed-content
+     * warning in some clients, and an illustration is not worth that.
+     */
+    private static function imageUrl(string $url): string
+    {
+        $url = trim($url);
+
+        return str_starts_with(strtolower($url), 'https://') ? $url : '';
+    }
+
+    /** Feed descriptions almost always carry HTML. This flattens them to text. */
     private static function text(string $raw): string
     {
         $decoded = html_entity_decode(strip_tags($raw), ENT_QUOTES | ENT_HTML5, 'UTF-8');

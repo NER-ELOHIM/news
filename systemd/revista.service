@@ -1,0 +1,22 @@
+[Unit]
+Description=Revista semanal do news
+Documentation=https://github.com/NER-ELOHIM/news
+# Sem rede, a coleta falha inteira e o timer só tentaria de novo no domingo
+# seguinte. Melhor esperar a rede subir.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/dev/news/bin/revista
+# A edição inteira leva segundos, mas um feed pendurado mais o modelo pensando
+# cabem folgadamente em dez minutos. Passou disso, algo travou.
+TimeoutStartSec=600
+
+# O serviço lê ~/.config/iode/news.env e escreve nada. Estas travas custam zero
+# e limitam o estrago se um dia um feed hostil achar um furo no parser.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%T

@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+#
+# weekly — builds and delivers the weekly edition.
+#
+# This is what the Sunday timer fires, and the same thing you run by hand. It
+# exists so the edition's options live in exactly one place: a flag forgotten
+# here becomes a wrong edition every week, and nobody re-checks what already
+# works.
+#
+#   bin/weekly --preview    build and show it, sending nothing
+#   bin/weekly              build and deliver by email and Telegram
+#
+# Credentials come from ~/.config/iode/news.env, which never enters Git.
+
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+env="${IODE_NEWS_ENV:-$HOME/.config/iode/news.env}"
+recipient="${IODE_NEWS_EMAIL:-}"
+
+# No address baked into the code: this repository is public, and a personal
+# email in a versioned file is an address harvested by spam bots within a week.
+# Whoever sends declares where to.
+if [[ -z "$recipient" && "${1:-}" != "--preview" ]]; then
+  echo "set IODE_NEWS_EMAIL to the edition recipient" >&2
+  exit 3
+fi
+
+if [[ ! -f "$env" ]]; then
+  echo "faltando $env — copie de docs/news.env.exemplo e preencha" >&2
+  exit 3
+fi
+
+# Refuses a credential file that others can read. Worth the nagging: a leaked
+# API key costs more than one extra warning.
+perm="$(stat -c '%a' "$env")"
+if [[ "$perm" != "600" && "$perm" != "400" ]]; then
+  echo "$env está com permissão $perm; rode: chmod 600 $env" >&2
+  exit 3
+fi
+
+# A preview sends nothing, so it only needs the model key. Demanding delivery
+# credentials just to render a local HTML file blocks someone on a step they do
+# not need to take yet.
+if [[ "${1:-}" == "--preview" ]]; then
+  required="IODE_ANTHROPIC_API_KEY"
+else
+  required="IODE_ANTHROPIC_API_KEY IODE_TELEGRAM_TOKEN IODE_TELEGRAM_CHAT_ID IODE_SMTP_USER IODE_SMTP_PASS"
+fi
+
+# Matches <value>, '<value>' and "<value>": the placeholders are quoted so the
+# `source` below does not read "<" as a redirection, and this guard has to see
+# all three shapes.
+missing=""
+for var in $required; do
+  if grep -qE "^$var=[\"']?<" "$env" || ! grep -qE "^$var=." "$env"; then
+    missing="$missing $var"
+  fi
+done
+if [[ -n "$missing" ]]; then
+  echo "$env ainda precisa de:" >&2
+  printf '  %s\n' $missing >&2
+  exit 3
+fi
+
+# `set -a` exports everything defined below, which is how the PHP subprocess
+# sees the variables without an export on every line.
+set -a
+# shellcheck disable=SC1090
+source "$env"
+set +a
+
+request=$(cat <<'JSON'
+{"contract":1,"project":"news","path":"","since":null,
+ "config":{"cadence":"weekly",
+           "categories":["markets","economics","engineering",
+                         "geopolitics","saas","scripture"],
+           "timeout_seconds":8,"budget_seconds":45}}
+JSON
+)
+
+if [[ "${1:-}" == "--preview" ]]; then
+  # A preview writes to a file instead of sending: it is what you look at
+  # before signing off, and what you forward to another machine to check the
+  # layout on a real client.
+  out="${2:-/tmp/issacar-$(date +%Y-%m-%d).html}"
+  data="${out%.html}.json"
+
+  # Saves the edition's data next to the HTML. Without it, any layout tweak
+  # costs another model call to see the result — and the layout is the part you
+  # touch ten times before it is right.
+  echo "$request" | "$root/bin/news" | "$root/bin/digest" --full --json > "$data"
+  "$root/bin/digest" --de-json="$data" < /dev/null > "$out"
+
+  echo "preview at $out" >&2
+  echo "data at   $data (re-render with: bin/digest --de-json=$data)" >&2
+  exit 0
+fi
+
+echo "$request" | "$root/bin/news" | "$root/bin/digest" \
+  --full --email="$recipient" --telegram

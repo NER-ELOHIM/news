@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Iode\News;
 
 /**
- * Implementa o contrato de adaptador do iode, versão 1.
+ * Implements version 1 of the engine's adapter contract.
  *
- * Ver docs/CONTRATOS.md no repositório do motor. O adaptador lê uma requisição
- * JSON do stdin, escreve uma resposta JSON no stdout, e comunica o resultado
- * pelo código de saída.
+ * The adapter reads a JSON request from stdin, writes a JSON response to
+ * stdout, and reports the outcome through its exit code.
  */
 final class Contract
 {
@@ -33,24 +32,24 @@ final class Contract
     public static function readRequest(string $raw): array
     {
         if (trim($raw) === '') {
-            throw new ContractError('requisição vazia no stdin', self::BAD_CONFIG);
+            throw new ContractError('empty request on stdin', self::BAD_CONFIG);
         }
 
         try {
             $req = json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
         } catch (\JsonException $e) {
-            throw new ContractError('requisição não é JSON válido: ' . $e->getMessage(), self::BAD_CONFIG);
+            throw new ContractError('request is not valid JSON: ' . $e->getMessage(), self::BAD_CONFIG);
         }
 
         if (!is_array($req)) {
-            throw new ContractError('requisição não é um objeto JSON', self::BAD_CONFIG);
+            throw new ContractError('request is not a JSON object', self::BAD_CONFIG);
         }
 
-        // Versão desconhecida do contrato é código 2: o motor desabilita o
-        // adaptador em vez de tentar de novo.
+        // An unknown contract version is code 2: the engine disables the
+        // adapter rather than retrying it.
         if (($req['contract'] ?? null) !== self::VERSION) {
             throw new ContractError(
-                sprintf('contrato %s incompatível, este adaptador fala %d', json_encode($req['contract'] ?? null), self::VERSION),
+                sprintf('incompatible contract %s; this adapter speaks %d', json_encode($req['contract'] ?? null), self::VERSION),
                 self::INCOMPATIBLE
             );
         }
@@ -59,7 +58,7 @@ final class Contract
         if (isset($req['since']) && is_string($req['since']) && $req['since'] !== '') {
             $since = self::parseTimestamp($req['since']);
             if ($since === null) {
-                throw new ContractError('campo since não é RFC 3339: ' . $req['since'], self::BAD_CONFIG);
+                throw new ContractError('field since is not RFC 3339: ' . $req['since'], self::BAD_CONFIG);
             }
         }
 
@@ -72,9 +71,9 @@ final class Contract
     }
 
     /**
-     * parseTimestamp aceita RFC 3339 e RFC 822 (o formato de pubDate do RSS).
-     * Devolve null quando não há offset de fuso: o contrato rejeita horário
-     * sem offset, porque adivinhar fuso é como se perde uma hora por ano.
+     * Accepts RFC 3339 and RFC 822 (the RSS pubDate format). Returns null
+     * when there is no timezone offset: the contract rejects a timestamp
+     * without one, because guessing the zone is how you lose an hour a year.
      */
     public static function parseTimestamp(string $raw): ?\DateTimeImmutable
     {
@@ -89,8 +88,8 @@ final class Contract
             return null;
         }
 
-        // Sem offset explícito o PHP assume o fuso local em silêncio. Exigimos
-        // que o texto original traga Z, ±HH:MM, ±HHMM ou um nome de fuso.
+        // Without an explicit offset PHP silently assumes the local zone. We
+        // require the original text to carry Z, ±HH:MM, ±HHMM or a zone name.
         if (!preg_match('/(Z|[+-]\d{2}:?\d{2}|\s(GMT|UTC|[A-Z]{3,4}))$/i', $raw)) {
             return null;
         }
@@ -98,7 +97,7 @@ final class Contract
         return $ts;
     }
 
-    /** Formata em RFC 3339 com offset, que é o que o contrato exige. */
+    /** Formats as RFC 3339 with an offset, which is what the contract requires. */
     public static function formatTimestamp(\DateTimeImmutable $ts): string
     {
         return $ts->format(\DateTimeInterface::RFC3339);
@@ -121,7 +120,7 @@ final class Contract
         );
     }
 
-    /** Corta respeitando limite de bytes sem quebrar caractere multibyte. */
+    /** Truncates to a byte limit without splitting a multibyte character. */
     public static function truncate(string $text, int $maxBytes): string
     {
         if (strlen($text) <= $maxBytes) {

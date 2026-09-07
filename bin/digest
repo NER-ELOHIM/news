@@ -1,0 +1,381 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * digest — builds the edition and delivers it.
+ *
+ * Reads the collector's response from stdin (the same envelope `bin/news`
+ * writes), asks the model to select and summarise, and sends the result by
+ * email and Telegram.
+ *
+ *   echo "$REQ" | bin/news | bin/digest --dry-run
+ *   echo "$REQ" | bin/news | bin/digest --email=you@example.com --telegram
+ *
+ * It is NOT an engine adapter, and that is deliberate. An adapter must be
+ * idempotent — `iode sync` may run twice — and sending email is not. Delivery
+ * lives here, in a command that only runs when told to, and not sending is the
+ * default: with no explicit delivery flag, nothing leaves the machine.
+ */
+
+namespace Iode\News;
+
+require __DIR__ . '/../src/Contract.php';
+require __DIR__ . '/../src/Catalog.php';
+require __DIR__ . '/../src/Entry.php';
+require __DIR__ . '/../src/Feed.php';
+require __DIR__ . '/../src/Fetcher.php';
+require __DIR__ . '/../src/Prefilter.php';
+require __DIR__ . '/../src/Claude.php';
+require __DIR__ . '/../src/Editor.php';
+require __DIR__ . '/../src/Render.php';
+require __DIR__ . '/../src/Telegram.php';
+require __DIR__ . '/../src/Mailer.php';
+
+// Definida antes do exit() abaixo: uma const de topo é avaliada na ordem do
+// arquivo, então declará-la depois da chamada faria --help morrer com
+// "undefined constant".
+const HELP = <<<'TXT'
+digest — builds an edition from a collection and delivers it.
+
+USAGE
+  bin/news < request.json | bin/digest [options]
+
+OPTIONS
+  --email=ADDRESS    deliver over SMTP to that address
+  --telegram         deliver through the Telegram Bot API
+  --json             with no delivery channel, print the edition as JSON
+  --de-json=FILE     re-render a saved edition without calling the API
+  --estimate         only compute tokens and cost, without calling the API
+  --cadence=NAME     daily | thrice-weekly | alternate-days | weekly
+  --rate=N           convert the cost to another currency, e.g. --rate=5.13
+  --full             weekly edition: long summaries, cap 30 and 6 per topic
+  --cap=N            maximum articles in the edition (12; 30 with --full)
+  --topic-cap=N      maximum per topic (2; 6 with --full)
+  --model=ID         Anthropic model (default claude-opus-5)
+  -h, --help         this help
+
+Without --email and without --telegram nothing is sent: the edition goes to
+stdout.
+
+ENVIRONMENT
+  IODE_ANTHROPIC_API_KEY   Anthropic API key (required)
+  IODE_TELEGRAM_TOKEN      bot token
+  IODE_TELEGRAM_CHAT_ID    destination chat id
+  IODE_SMTP_HOST           defaults to smtp.gmail.com
+  IODE_SMTP_PORT           defaults to 587
+  IODE_SMTP_USER           SMTP user
+  IODE_SMTP_PASS           app password, never the account password
+  IODE_SMTP_FROM           sender; defaults to IODE_SMTP_USER
+
+TXT;
+
+exit(main($argv));
+
+/** @param list<string> $argv */
+function main(array $argv): int
+{
+    $opts = parseArgs($argv);
+    if (isset($opts['help'])) {
+        fwrite(STDOUT, HELP);
+        return 0;
+    }
+
+    // Re-render without paying again: changing the layout should not cost a
+    // model call. The edition is data; its design is code. This comes first,
+    // before stdin is even read, because this path collects nothing.
+    if (isset($opts['de-json'])) {
+        $saved = json_decode((string) @file_get_contents((string) $opts['de-json']), true);
+        if (!is_array($saved) || !isset($saved['articles'])) {
+            fwrite(STDERR, 'could not read the edition from ' . $opts['de-json'] . "\n");
+            return 3;
+        }
+        fwrite(STDOUT, Render::html(
+            ['intro' => (string) ($saved['intro'] ?? ''), 'articles' => $saved['articles']],
+            new \DateTimeImmutable('now')
+        ));
+        return 0;
+    }
+
+    $raw = (string) stream_get_contents(STDIN);
+    if (trim($raw) === '') {
+        fwrite(STDERR, "stdin vazio: encadeie com o coletor, por exemplo `bin/news | bin/digest`\n");
+        return 3;
+    }
+
+    try {
+        $items = readCollection($raw);
+    } catch (\JsonException | \RuntimeException $e) {
+        fwrite(STDERR, $e->getMessage() . "\n");
+        return 3;
+    }
+
+    if ($items === []) {
+        fwrite(STDERR, "a coleta não trouxe nenhum item; nada a editar\n");
+        return 0;
+    }
+
+    $now = new \DateTimeImmutable('now');
+
+
+    // Without a key the dry run is still useful: it shows what would be sent
+    // to the model and what that would cost, which is what you want to know
+    // before wiring up a recurring job.
+    if (isset($opts['estimate'])) {
+        estimar($items, (string) ($opts['cadence'] ?? 'weekly'), (float) ($opts['rate'] ?? 0), isset($opts['full']));
+        return 0;
+    }
+
+    try {
+        $claude = new Claude(
+            (string) (getenv('IODE_ANTHROPIC_API_KEY') ?: getenv('ANTHROPIC_API_KEY') ?: ''),
+            (string) ($opts['model'] ?? 'claude-opus-5'),
+        );
+        $full = isset($opts['full']);
+        $editor = new Editor(
+            $claude,
+            (int) ($opts['cap'] ?? ($full ? 30 : 12)),
+            (int) ($opts['topic-cap'] ?? ($full ? 6 : 2)),
+            $full,
+        );
+        $edition = $editor->edit($items, $now);
+    } catch (ClaudeError $e) {
+        fwrite(STDERR, 'edition failed: ' . $e->getMessage() . "\n");
+        return 1;
+    }
+
+    $html = Render::html($edition, $now);
+    $telegram = Render::telegram($edition, $now);
+    $subject = Render::subject($edition, $now);
+
+    $usage = $claude->lastUsage();
+    fwrite(STDERR, sprintf(
+        "edition: %d articles from %d candidates%s\n",
+        count($edition['articles']),
+        count($items),
+        $usage !== null ? sprintf(' · %d input tokens, %d output', $usage['input_tokens'], $usage['output_tokens']) : ''
+    ));
+
+    $delivered = false;
+    $failed = false;
+
+    if (isset($opts['email'])) {
+        try {
+            sendEmail((string) $opts['email'], $subject, $edition, $html, $now);
+            fwrite(STDERR, "e-mail enviado para " . $opts['email'] . "\n");
+            $delivered = true;
+        } catch (DeliveryError $e) {
+            // A broken channel must not take the other down: if SMTP is out,
+            // the edition should still reach Telegram.
+            fwrite(STDERR, 'email failed: ' . $e->getMessage() . "\n");
+            $failed = true;
+        }
+    }
+
+    if (isset($opts['telegram'])) {
+        try {
+            (new Telegram(
+                (string) getenv('IODE_TELEGRAM_TOKEN'),
+                (string) getenv('IODE_TELEGRAM_CHAT_ID'),
+            ))->send($telegram);
+            fwrite(STDERR, sprintf("telegram sent in %d message(s)\n", count($telegram)));
+            $delivered = true;
+        } catch (DeliveryError $e) {
+            fwrite(STDERR, 'telegram failed: ' . $e->getMessage() . "\n");
+            $failed = true;
+        }
+    }
+
+    if (!$delivered) {
+        // No channel requested: the edition goes to stdout for inspection.
+        // That is the default, and what runs while someone is experimenting.
+        fwrite(STDOUT, isset($opts['json'])
+            ? json_encode($edition, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n"
+            : $html);
+    }
+
+    return $failed && !$delivered ? 1 : 0;
+}
+
+/**
+ * @return list<array<string,mixed>>
+ * @throws \RuntimeException
+ */
+function readCollection(string $raw): array
+{
+    $data = json_decode($raw, true, 64, JSON_THROW_ON_ERROR);
+    if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
+        throw new \RuntimeException('stdin is not a collection response: the items key is missing');
+    }
+    if (($data['contract'] ?? null) !== Contract::VERSION) {
+        throw new \RuntimeException(sprintf(
+            'incompatible contract %s; this command reads %d',
+            json_encode($data['contract'] ?? null),
+            Contract::VERSION
+        ));
+    }
+
+    return array_values(array_filter($data['items'], 'is_array'));
+}
+
+/** @param list<array<string,mixed>> $items */
+function estimate(array $items, string $cadence, float $rateArg = 0.0, bool $full = false): void
+{
+    $chars = 0;
+    foreach ($items as $item) {
+        $chars += mb_strlen((string) ($item['title'] ?? ''))
+            + min(600, mb_strlen((string) ($item['body'] ?? '')));
+    }
+
+    // Rule of thumb: ~3.5 characters per token for Portuguese with technical
+    // vocabulary. It is an estimate for sizing cost, not a measurement; the
+    // exact figure comes from the response's usage, which this command prints
+    // after every edition.
+    $input = (int) ($chars / 3.5) + 900;
+
+    // Output measured, not guessed. Two real runs: 12,232 tokens for 30
+    // articles with summaries alone, and 17,323 once each article also carried
+    // a blurb for the index. That is ~560 per article, plus the intro.
+    //
+    // In a full edition the output is most of the bill — it costs five times
+    // the input per token. An estimate that is wrong here is wrong about
+    // everything, and the first version of this code hardcoded 1,800 and lied
+    // by a factor of seven.
+    $perArticle = $full ? 560 : 150;
+    $cap = $full ? 30 : 12;
+    $output = $cap * $perArticle + 700;
+
+    // Preços por milhão de tokens, entrada e saída.
+    $prices = [
+        'claude-opus-5' => [5.0, 25.0],
+        'claude-sonnet-5' => [2.0, 10.0],
+        'claude-haiku-4-5' => [1.0, 5.0],
+    ];
+
+    // The exchange rate is deliberately not built in: a hardcoded rate
+    // becomes a lie within two weeks. Without --rate the output is in dollars.
+    $currency = $rateArg > 0 ? 'R$' : '$';
+    $rate = $rateArg > 0 ? $rateArg : 1.0;
+
+    fwrite(STDOUT, sprintf(
+        "candidatos: %d\nentrada estimada: ~%d tokens\nsaída estimada: ~%d tokens\n\n"
+        . "%-18s %12s %10s %10s\n",
+        count($items),
+        $input,
+        $output,
+        'model',
+        'per edition',
+        'per month',
+        'per year'
+    ));
+
+    // Editions per year rather than per month: a month has 4.33 weeks, and
+    // counting 4 understates the annual bill by a whole month.
+    $perYear = match ($cadence) {
+        'daily' => 365,
+        'thrice-weekly' => 156,
+        'alternate-days' => 182,
+        default => 52,
+    };
+
+    foreach ($prices as $modelo => [$pIn, $pOut]) {
+        $edition = $input / 1_000_000 * $pIn + $output / 1_000_000 * $pOut;
+        fwrite(STDOUT, sprintf(
+            "%-18s %12s %10s %10s\n",
+            $modelo,
+            sprintf('%s %.3f', $currency, $edition * $rate),
+            sprintf('%s %.2f', $currency, $edition * $rate * $perYear / 12),
+            sprintf('%s %.2f', $currency, $edition * $rate * $perYear)
+        ));
+    }
+
+    fwrite(STDOUT, sprintf("\n(%s cadence, %d editions per year%s)\n", $cadence, $perYear,
+        $rateArg > 0 ? sprintf('; USD at %.2f, before card fees', $rateArg) : ''));
+}
+
+/** @param array{intro:string, articles:list<array<string,mixed>>} $edition */
+function sendEmail(string $to, string $subject, array $edition, string $html, \DateTimeImmutable $now): void
+{
+    $mailer = new Mailer(
+        (string) (getenv('IODE_SMTP_HOST') ?: 'smtp.gmail.com'),
+        (int) (getenv('IODE_SMTP_PORT') ?: 587),
+        (string) getenv('IODE_SMTP_USER'),
+        (string) getenv('IODE_SMTP_PASS'),
+        (string) (getenv('IODE_SMTP_FROM') ?: getenv('IODE_SMTP_USER') ?: ''),
+    );
+
+    $mailer->send($to, $subject, plainText($edition, $now), $html);
+}
+
+/** @param array{intro:string, articles:list<array<string,mixed>>} $edition */
+function plainText(array $edition, \DateTimeImmutable $now): string
+{
+    $lines = [Render::NOME . ' — ' . $now->format('d/m/Y'), Render::LEMA, ''];
+
+    if ($edition['intro'] !== '') {
+        $lines[] = $edition['intro'];
+        $lines[] = '';
+    }
+
+    $temaAnterior = null;
+    foreach ($edition['articles'] as $m) {
+        if ($m['topic'] !== $temaAnterior) {
+            $lines[] = strtoupper(Catalog::label((string) $m['topic']));
+            $lines[] = '';
+            $temaAnterior = $m['topic'];
+        }
+        $lines[] = (string) $m['title'];
+        $lines[] = (string) $m['summary'];
+        $lines[] = (string) $m['link'];
+        $lines[] = '';
+    }
+
+    return implode("\n", $lines);
+}
+
+/**
+ * @param list<string> $argv
+ * @return array<string,string|bool>
+ */
+function parseArgs(array $argv): array
+{
+    $opts = [];
+
+    foreach (array_slice($argv, 1) as $arg) {
+        if ($arg === '--help' || $arg === '-h') {
+            $opts['help'] = true;
+        } elseif ($arg === '--telegram') {
+            $opts['telegram'] = true;
+        } elseif ($arg === '--json') {
+            $opts['json'] = true;
+        } elseif ($arg === '--estimate') {
+            $opts['estimate'] = true;
+        } elseif ($arg === '--dry-run') {
+            // Accepted and ignored: not sending is already the default. It
+            // exists for anyone who types it out of habit and expects it to
+            // work.
+            $opts['dry-run'] = true;
+        } elseif (str_starts_with($arg, '--email=')) {
+            $opts['email'] = substr($arg, 8);
+        } elseif (str_starts_with($arg, '--de-json=')) {
+            $opts['de-json'] = substr($arg, 10);
+        } elseif ($arg === '--full') {
+            $opts['full'] = true;
+        } elseif (str_starts_with($arg, '--rate=')) {
+            $opts['rate'] = substr($arg, 10);
+        } elseif (str_starts_with($arg, '--cadence=')) {
+            $opts['cadence'] = substr($arg, 11);
+        } elseif (str_starts_with($arg, '--model=')) {
+            $opts['model'] = substr($arg, 9);
+        } elseif (str_starts_with($arg, '--cap=')) {
+            $opts['cap'] = substr($arg, 7);
+        } elseif (str_starts_with($arg, '--topic-cap=')) {
+            $opts['topic-cap'] = substr($arg, 12);
+        }
+    }
+
+    return $opts;
+}
+
+

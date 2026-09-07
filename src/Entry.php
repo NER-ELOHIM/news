@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Iode\News;
 
-/** Uma entrada de feed, antes de virar item do contrato. */
+/** A feed entry, before it becomes a contract item. */
 final class Entry
 {
     public function __construct(
@@ -15,29 +15,36 @@ final class Entry
         public readonly string $author,
         public readonly ?\DateTimeImmutable $published,
         public readonly string $sourceUrl,
+        public readonly string $image = '',
     ) {
     }
 
     /**
-     * key é a chave natural, única dentro do par projeto + adaptador. Usamos a
-     * origem mais o id da entrada: o mesmo item republicado com texto editado
-     * mantém a chave, o que deixa o sync idempotente.
+     * `key` is the natural key, unique within the project + adapter pair. It
+     * combines the source URL with the entry id: an item republished with
+     * edited text keeps its key, which is what makes sync idempotent.
      *
      * @return array<string,mixed>
      */
-    public function toItem(\DateTimeImmutable $fallbackTs): array
+    public function toItem(\DateTimeImmutable $fallbackTs, string $topic = Catalog::GENERAL): array
     {
         $ts = $this->published ?? $fallbackTs;
 
-        $meta = ['feed' => $this->sourceUrl];
+        // The topic comes from the caller, not the parser: it is a property
+        // of the source in the catalog, not of the entry. The same XML served
+        // under another topic would produce the same Entry.
+        $meta = ['feed' => $this->sourceUrl, 'topic' => $topic];
         if ($this->link !== '') {
             $meta['link'] = $this->link;
         }
         if ($this->author !== '') {
             $meta['author'] = Contract::truncate($this->author, 200);
         }
+        if ($this->image !== '') {
+            $meta['image'] = $this->image;
+        }
         if ($this->published === null) {
-            // Sem data utilizável na entrada; quem lê o item precisa saber.
+            // No usable date on the entry; whoever reads the item must know.
             $meta['ts_estimado'] = true;
         }
 

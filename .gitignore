@@ -1,2 +1,9 @@
 /vendor/
 *.log
+
+# Credenciais nunca entram no repositório. Elas moram em
+# ~/.config/iode/news.env, com permissão 600, e chegam ao programa pelo
+# ambiente. Ver a seção Credenciais no README.
+*.env
+.env
+news.env

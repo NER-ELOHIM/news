@@ -1,0 +1,14 @@
+[Unit]
+Description=Dispara a revista semanal aos domingos de manhã
+
+[Timer]
+OnCalendar=Sun *-*-* 08:00:00
+# Se a máquina estava desligada no horário, roda assim que ligar. Sem isto, um
+# domingo com o computador fora do ar perde a edição da semana inteira.
+Persistent=true
+# Espalha o disparo em até 15 minutos: nada aqui precisa ser pontual, e evita
+# competir com todo o resto que acorda às 8 em ponto.
+RandomizedDelaySec=15m
+
+[Install]
+WantedBy=timers.target

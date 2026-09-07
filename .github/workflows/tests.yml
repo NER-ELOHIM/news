@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show PHP version
+        run: php -v
+
+      # Lint before testing: a parse error should be reported as a parse error,
+      # not as a mysterious failure halfway through the suite.
+      - name: Lint every source file
+        run: |
+          for f in bin/news bin/digest src/*.php tests/*.php; do
+            php -l "$f"
+          done
+
+      # The suite touches no network and needs no credentials: feed fixtures
+      # are string literals, and the Anthropic API is answered by a fake server
+      # on loopback.
+      - name: Run the test suite
+        run: php tests/run.php
