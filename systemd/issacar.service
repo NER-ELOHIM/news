@@ -1,0 +1,23 @@
+[Unit]
+Description=Issacar weekly edition
+Documentation=https://github.com/NER-ELOHIM/news
+# Without the network the whole collection fails and the timer would only try
+# again next Sunday. Better to wait for the network to come up.
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/dev/news/bin/weekly
+# The edition itself takes seconds, but a hung feed plus the model thinking fit
+# comfortably inside ten minutes. Past that, something is stuck.
+TimeoutStartSec=900
+
+# The service reads ~/.config/iode/news.env and writes nothing. These cost
+# nothing and limit the blast radius if a hostile feed ever finds a hole in the
+# parser.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%T

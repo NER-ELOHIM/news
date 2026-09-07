@@ -1,88 +1,90 @@
 #!/usr/bin/env bash
 #
-# telegram-setup — descobre o chat id do bot e grava no arquivo de credenciais.
+# telegram-setup — finds the bot's chat id and writes it into the credentials
+# file.
 #
-# Existe porque este é o passo mais frágil da configuração: a documentação manda
-# você abrir uma URL com o token embutido no navegador, ler um JSON e achar um
-# campo aninhado. Errar aí é fácil, e o token acaba no histórico do navegador.
-# Aqui ele nunca sai do arquivo.
+# This exists because it is the most fragile step of the setup: the documented
+# route has you open a URL with the token embedded in your browser, read a JSON
+# blob and locate a nested field. That is easy to get wrong, and it leaves the
+# token in your browser history. Here the token never leaves the file.
 #
 #   bin/telegram-setup
 #
-# Pré-requisito: você já mandou uma mensagem para o seu bot. O Telegram proíbe
-# bot de iniciar conversa, então sem essa primeira mensagem não há nada a ler.
+# Prerequisite: you have already sent a message to your bot. Telegram forbids a
+# bot from opening a conversation, so without that first message there is
+# nothing to read.
 
 set -euo pipefail
 
-ambiente="${IODE_NEWS_ENV:-$HOME/.config/iode/news.env}"
+env="${IODE_NEWS_ENV:-$HOME/.config/iode/news.env}"
 
-if [[ ! -f "$ambiente" ]]; then
-  echo "não achei $ambiente" >&2
+if [[ ! -f "$env" ]]; then
+  echo "could not find $env" >&2
   exit 3
 fi
 
-# Extrai só a linha do token em vez de dar `source` no arquivo inteiro. Um
-# arquivo que o usuário edita à mão não deveria ser executado pelo shell: um
-# caractere solto vira comando, e um placeholder com "<" vira redirecionamento.
-IODE_TELEGRAM_TOKEN="$(sed -n 's/^IODE_TELEGRAM_TOKEN=//p' "$ambiente" | head -1 | tr -d "\"'" )"
+# Extracts only the token line instead of sourcing the whole file. A file the
+# user edits by hand should not be executed by the shell: a stray character
+# becomes a command, and a placeholder containing "<" becomes a redirection.
+IODE_TELEGRAM_TOKEN="$(sed -n 's/^IODE_TELEGRAM_TOKEN=//p' "$env" | head -1 | tr -d "\"'" )"
 
 if [[ -z "$IODE_TELEGRAM_TOKEN" || "$IODE_TELEGRAM_TOKEN" == \<* ]]; then
-  echo "IODE_TELEGRAM_TOKEN ainda não foi preenchido em $ambiente" >&2
-  echo "abra com: code $ambiente" >&2
+  echo "IODE_TELEGRAM_TOKEN is not filled in yet at $env" >&2
+  echo "open it with: code $env" >&2
   exit 3
 fi
 
-resposta="$(curl -sS --max-time 20 "https://api.telegram.org/bot${IODE_TELEGRAM_TOKEN}/getUpdates")"
+response="$(curl -sS --max-time 20 "https://api.telegram.org/bot${IODE_TELEGRAM_TOKEN}/getUpdates")"
 
-# O jq pode não estar instalado; o PHP está, e é o que este repositório já usa.
-# A saída é só o chat id e o nome de quem falou — nada de credencial.
-leitura="$(php -r '
+# jq may not be installed; PHP is, and it is what this repository already uses.
+# The output is only the chat id and the speaker's name — no credentials.
+reading="$(php -r '
 $d = json_decode(stream_get_contents(STDIN), true);
 if (!is_array($d) || ($d["ok"] ?? false) !== true) {
-    fwrite(STDERR, "o Telegram recusou o token: " . ($d["description"] ?? "resposta ilegivel") . "\n");
+    fwrite(STDERR, "Telegram refused the token: " . ($d["description"] ?? "resposta ilegivel") . "\n");
     exit(1);
 }
 $updates = $d["result"] ?? [];
 if ($updates === []) {
-    fwrite(STDERR, "nenhuma mensagem encontrada.\n"
-        . "abra a conversa com o seu bot, aperte INICIAR e mande qualquer coisa, depois rode de novo.\n"
-        . "(o Telegram so guarda as mensagens por 24h)\n");
+    fwrite(STDERR, "no messages found.\n"
+        . "open the chat with your bot, press START, send anything, then run this again.\n"
+        . "(Telegram only keeps updates for 24h)\n");
     exit(2);
 }
-// A mais recente vale: se voce falou com o bot de dois lugares, o ultimo e o
-// que voce quer.
+// The most recent one wins: if you messaged the bot from two places, the
+// last one is the one you want.
 $ultima = end($updates);
 $chat = $ultima["message"]["chat"] ?? $ultima["channel_post"]["chat"] ?? null;
 if ($chat === null) {
-    fwrite(STDERR, "achei atualizacoes, mas nenhuma com chat identificavel\n");
+    fwrite(STDERR, "found updates, but none with an identifiable chat\n");
     exit(2);
 }
 printf("%s\t%s\t%s\n", $chat["id"], $chat["type"] ?? "?",
     trim(($chat["first_name"] ?? "") . " " . ($chat["last_name"] ?? "")) ?: ($chat["title"] ?? "sem nome"));
-' <<<"$resposta")"
+' <<<"$response")"
 
-chat_id="$(cut -f1 <<<"$leitura")"
-tipo="$(cut -f2 <<<"$leitura")"
-quem="$(cut -f3 <<<"$leitura")"
+chat_id="$(cut -f1 <<<"$reading")"
+type="$(cut -f2 <<<"$reading")"
+who="$(cut -f3 <<<"$reading")"
 
-echo "chat encontrado: $quem (tipo $tipo, id $chat_id)"
+echo "chat found: $who (type $type, id $chat_id)"
 
 # Substitui a linha inteira, tenha ela placeholder ou um valor antigo.
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 chmod 600 "$tmp"
-sed "s|^IODE_TELEGRAM_CHAT_ID=.*|IODE_TELEGRAM_CHAT_ID=$chat_id|" "$ambiente" > "$tmp"
-cat "$tmp" > "$ambiente"   # sobrescreve o conteúdo e preserva dono e permissão
+sed "s|^IODE_TELEGRAM_CHAT_ID=.*|IODE_TELEGRAM_CHAT_ID=$chat_id|" "$env" > "$tmp"
+cat "$tmp" > "$env"   # sobrescreve o conteúdo e preserva dono e permissão
 
-echo "gravado em $ambiente"
+echo "written to $env"
 
-# Confirma pelo próprio canal: se esta mensagem chegar no seu Telegram, a
-# configuração está certa de ponta a ponta, e não só sintaticamente.
+# Confirms through the channel itself: if this message reaches your Telegram,
+# the configuration is right end to end, not merely syntactically valid.
 #
-# A resposta da API é lida, e não descartada: sem isso o script anuncia "mandei"
-# mesmo quando o Telegram recusou, e a pessoa vai procurar em vão uma mensagem
-# que nunca saiu.
-envio="$(curl -sS --max-time 20 \
+# The API response is read rather than discarded: without that the script
+# announces success even when Telegram refused, and you go looking in vain for
+# a message that never left.
+sent="$(curl -sS --max-time 20 \
   -d "chat_id=$chat_id" \
   --data-urlencode 'text=Issacar configurado. A revista chega por aqui aos domingos.' \
   "https://api.telegram.org/bot${IODE_TELEGRAM_TOKEN}/sendMessage")"
@@ -90,13 +92,13 @@ envio="$(curl -sS --max-time 20 \
 php -r '
 $d = json_decode(stream_get_contents(STDIN), true);
 if (($d["ok"] ?? false) !== true) {
-    fwrite(STDERR, sprintf("o Telegram recusou o envio (%s): %s\n",
+    fwrite(STDERR, sprintf("Telegram refused the send (%s): %s\n",
         $d["error_code"] ?? "?", $d["description"] ?? "sem descricao"));
     exit(1);
 }
-printf("mensagem de teste entregue (id %d).\n", $d["result"]["message_id"]);
-' <<<"$envio"
+printf("test message delivered (id %d).\n", $d["result"]["message_id"]);
+' <<<"$sent"
 
-echo "procure na conversa com o SEU bot, nao na do BotFather:"
+echo "look in the conversation with YOUR bot, not with BotFather:"
 echo "  https://t.me/$(curl -sS --max-time 15 "https://api.telegram.org/bot${IODE_TELEGRAM_TOKEN}/getMe" \
   | php -r '$d=json_decode(stream_get_contents(STDIN),true); echo $d["result"]["username"] ?? "seu_bot";')"
