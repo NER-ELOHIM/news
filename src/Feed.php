@@ -16,6 +16,20 @@ final class Feed
     private const ATOM_NS = 'http://www.w3.org/2005/Atom';
     private const DC_NS = 'http://purl.org/dc/elements/1.1/';
     private const MEDIA_NS = 'http://search.yahoo.com/mrss/';
+
+    /**
+     * libxml's XML_PARSE_RECOVER, which keeps the parser going through a
+     * malformed document instead of giving up on the first error.
+     *
+     * PHP only exposes it as LIBXML_RECOVER from 8.4 onward. On 8.2 and 8.3
+     * the constant is undefined even with libxml loaded, so referencing it
+     * there fails with "Undefined constant" — which reads like a namespace
+     * problem and points nowhere near the cause. The option itself works on
+     * every version: the bitmask is handed straight to libxml.
+     *
+     * Verified against php:8.2-cli, php:8.3-cli and php:8.4-cli.
+     */
+    private const RECOVER = 1;
     private const CONTENT_NS = 'http://purl.org/rss/1.0/modules/content/';
 
     /**
@@ -35,7 +49,7 @@ final class Feed
             $doc = simplexml_load_string(
                 $xml,
                 \SimpleXMLElement::class,
-                LIBXML_NOCDATA | LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_RECOVER
+                LIBXML_NOCDATA | LIBXML_NOERROR | LIBXML_NOWARNING | self::RECOVER
             );
         } finally {
             libxml_clear_errors();
