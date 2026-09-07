@@ -7,11 +7,28 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
+    # The README claims this runs on any PHP 8.2+. Testing the floor and the
+    # current release turns that from a promise into something CI can refute.
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.4']
+
+    name: PHP ${{ matrix.php }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Show PHP version
-        run: php -v
+      # The extensions are listed rather than assumed. The runner's stock PHP
+      # ships without libxml, and the first CI run failed with
+      # "Undefined constant LIBXML_RECOVER" — a missing extension reads as a
+      # namespace error, which points nowhere near the cause.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: simplexml, dom, libxml, curl, mbstring, iconv
+          coverage: none
 
       # Lint before testing: a parse error should be reported as a parse error,
       # not as a mysterious failure halfway through the suite.

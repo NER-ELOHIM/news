@@ -36,7 +36,7 @@ function check(string $name, callable $body): void
         fwrite(STDOUT, "  ok    $name\n");
     } catch (\Throwable $e) {
         $failed++;
-        fwrite(STDOUT, "  FALHA $name\n        " . $e->getMessage() . "\n");
+        fwrite(STDOUT, "  FAIL  $name\n        " . $e->getMessage() . "\n");
     }
 }
 
