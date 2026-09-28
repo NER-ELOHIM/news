@@ -1,0 +1,87 @@
+name: weekly edition
+
+# Sundays at 12:00 UTC — 09:00 in São Paulo. GitHub queues scheduled jobs and
+# may fire them several minutes late; the edition is not time-critical, so that
+# is acceptable. What is not acceptable is depending on a laptop being awake,
+# which is what the systemd timer required.
+on:
+  schedule:
+    - cron: "0 12 * * 0"
+  # Lets the edition be fired by hand, which is also how it gets tested without
+  # waiting for Sunday.
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: "Build it but deliver nothing"
+        type: boolean
+        default: false
+
+# One edition at a time. A manual run during a scheduled one would send twice.
+concurrency:
+  group: weekly-edition
+  cancel-in-progress: false
+
+jobs:
+  edition:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: simplexml, dom, libxml, curl, mbstring, iconv
+          coverage: none
+
+      # bin/weekly reads credentials from a file and refuses one that others
+      # can read. The runner is ephemeral, but the check is worth keeping: the
+      # script behaves identically here and on a workstation, so a failure here
+      # reproduces there.
+      - name: Materialise credentials
+        env:
+          IODE_ANTHROPIC_API_KEY: ${{ secrets.IODE_ANTHROPIC_API_KEY }}
+          IODE_TELEGRAM_TOKEN: ${{ secrets.IODE_TELEGRAM_TOKEN }}
+          IODE_TELEGRAM_CHAT_ID: ${{ secrets.IODE_TELEGRAM_CHAT_ID }}
+          IODE_SMTP_HOST: ${{ secrets.IODE_SMTP_HOST }}
+          IODE_SMTP_PORT: ${{ secrets.IODE_SMTP_PORT }}
+          IODE_SMTP_USER: ${{ secrets.IODE_SMTP_USER }}
+          IODE_SMTP_PASS: ${{ secrets.IODE_SMTP_PASS }}
+          IODE_SMTP_FROM: ${{ secrets.IODE_SMTP_FROM }}
+        run: |
+          mkdir -p "$HOME/.config/iode"
+          env_file="$HOME/.config/iode/news.env"
+          {
+            echo "IODE_ANTHROPIC_API_KEY=$IODE_ANTHROPIC_API_KEY"
+            echo "IODE_TELEGRAM_TOKEN=$IODE_TELEGRAM_TOKEN"
+            echo "IODE_TELEGRAM_CHAT_ID=$IODE_TELEGRAM_CHAT_ID"
+            echo "IODE_SMTP_HOST=$IODE_SMTP_HOST"
+            echo "IODE_SMTP_PORT=$IODE_SMTP_PORT"
+            echo "IODE_SMTP_USER=$IODE_SMTP_USER"
+            echo "IODE_SMTP_PASS=$IODE_SMTP_PASS"
+            echo "IODE_SMTP_FROM=$IODE_SMTP_FROM"
+          } > "$env_file"
+          chmod 600 "$env_file"
+
+      - name: Build and deliver
+        env:
+          IODE_NEWS_EMAIL: ${{ secrets.IODE_NEWS_EMAIL }}
+        run: |
+          if [[ "${{ inputs.preview }}" == "true" ]]; then
+            bin/weekly --preview "$RUNNER_TEMP/edition.html"
+          else
+            bin/weekly
+          fi
+
+      # Keeps the rendered edition for seven days. When Telegram or email fails,
+      # this is the difference between "it broke" and "it built fine, delivery
+      # failed" — two very different problems.
+      - name: Keep the rendered edition
+        if: always() && inputs.preview == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: edition
+          path: ${{ runner.temp }}/edition.*
+          retention-days: 7
+          if-no-files-found: ignore
