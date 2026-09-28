@@ -7,3 +7,6 @@
 *.env
 .env
 news.env
+
+# Local eval runs (the baseline in evals/baseline/ is committed)
+/evals/runs/

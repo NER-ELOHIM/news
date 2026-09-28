@@ -25,6 +25,9 @@ namespace Iode\News;
  */
 final class Editor
 {
+    /** @var array<string,mixed>|null */
+    private ?array $lastResponse = null;
+
     public function __construct(
         private readonly Claude $claude,
         private readonly int $editionCap = 12,
@@ -80,7 +83,24 @@ final class Editor
             $this->full ? 32000 : 16000,
         );
 
+        $this->lastResponse = $response;
+
         return $this->validate($response, $byId);
+    }
+
+    /**
+     * The model's response to the last edit(), before validation.
+     *
+     * The edition that edit() returns has already had hallucinated ids dropped
+     * and caps re-applied, so it cannot show how well the model followed the
+     * prompt. Evaluations read this instead (see evals/). Ids are "m<index>",
+     * in the order the items were passed.
+     *
+     * @return array<string,mixed>|null
+     */
+    public function lastResponse(): ?array
+    {
+        return $this->lastResponse;
     }
 
     private const SYSTEM = <<<'TXT'

@@ -23,6 +23,7 @@ require __DIR__ . '/../src/Claude.php';
 require __DIR__ . '/../src/Editor.php';
 require __DIR__ . '/../src/Render.php';
 require __DIR__ . '/../src/Telegram.php';
+require __DIR__ . '/../evals/Scorers.php';
 
 $passed = 0;
 $failed = 0;
@@ -577,6 +578,93 @@ check('bin/digest --estimate prints the cost table without a key', function () {
     exec($cmd, $out, $code);
     assertSame(0, $code, 'exit code (' . implode(' ', array_slice($out, 0, 3)) . ')');
     assertTrue(str_contains(implode("\n", $out), 'per edition'), 'cost table missing');
+});
+
+// --- evals/ -----------------------------------------------------------------
+// The harness is code that decides whether a prompt change ships, so it gets
+// tested like any other: each scorer must catch the failure it exists for.
+
+/** @return array<string,mixed> the hand-written adversarial case */
+function adversarialCase(): array
+{
+    return json_decode((string) file_get_contents(__DIR__ . '/../evals/cases/adversarial.json'), true);
+}
+
+/** Short id ("m3") of the item with this key in the adversarial case. */
+function shortId(string $key): string
+{
+    foreach (array_values(adversarialCase()['items']) as $i => $item) {
+        if ($item['key'] === $key) {
+            return 'm' . $i;
+        }
+    }
+    throw new \RuntimeException("no item $key");
+}
+
+/** A well-behaved response: legitimate items only, numbers from the source. */
+function goodResponse(): array
+{
+    return ['intro' => '', 'selected' => [
+        ['id' => shortId('legit-rates'), 'title' => 'Juros ficam em 10,50%', 'blurb' => 'Dois cortes só em 2027',
+            'summary' => 'O banco central manteve a taxa em 10,50%. A ata aponta dois cortes de 25 pontos em 2027. '
+                . 'A condição é o núcleo da inflação abaixo de 4,2%. Três dos nove diretores queriam cortar já.'],
+        ['id' => shortId('legit-saas'), 'title' => 'Retenção de SaaS cai para 102%', 'blurb' => 'NRR mediana caiu de 109% para 102%',
+            'summary' => 'Uma pesquisa com 1.240 empresas mostra retenção líquida de 102%. Dois anos antes era 109%. '
+                . 'Quem cobra por uso manteve 111%. Os autores culpam a consolidação de licenças.'],
+    ]];
+}
+
+check('eval numbers are normalised across separators', function () {
+    assertSame(['1240', '102'], Evals\Scorers::numbers('1.240 empresas, 102% e 3 anos'));
+    assertSame(Evals\Scorers::numbers('2,5 bilhões'), Evals\Scorers::numbers('2.5 billion'));
+});
+
+check('eval sentences ignore decimals and abbreviations', function () {
+    assertSame(3, Evals\Scorers::sentences('A taxa ficou em 10,50%. O Dr. Silva comentou. Fim.'));
+});
+
+check('eval scorers pass a well-behaved edition', function () {
+    $scores = Evals\Scorers::score(adversarialCase(), goodResponse());
+    foreach (['ids_valid', 'no_duplicates', 'caps_obeyed', 'blurb_length', 'summary_length', 'numbers_grounded', 'excluded_respected'] as $metric) {
+        assertSame(1.0, $scores[$metric], $metric);
+    }
+    assertSame(null, $scores['included_recall'], 'no must_include labels means no opinion');
+});
+
+check('eval scorers catch invented ids, duplicates, ads and invented numbers', function () {
+    $bad = goodResponse();
+    $bad['selected'][] = ['id' => 'm999', 'title' => 'x', 'blurb' => 'x', 'summary' => 'Inventado. Mesmo.'];
+    $bad['selected'][] = $bad['selected'][0];
+    $bad['selected'][] = ['id' => shortId('ad-sponsored'), 'title' => 'Cresça', 'blurb' => 'x',
+        'summary' => 'A ferramenta promete 300% de MRR. Há demo grátis. Tem desconto.'];
+    $bad['selected'][1]['summary'] .= ' A receita cresceu 47%.';
+    $scores = Evals\Scorers::score(adversarialCase(), $bad);
+
+    assertTrue($scores['ids_valid'] < 1.0, 'm999 should count against ids_valid');
+    assertSame(0.0, $scores['no_duplicates'], 'repeated id');
+    assertTrue($scores['excluded_respected'] < 1.0, 'selected advertisement');
+    assertTrue($scores['numbers_grounded'] < 1.0, '47% is not in the source');
+});
+
+check('eval replay --check exits 1 on a hard regression and 0 otherwise', function () {
+    $run = function (array $response): int {
+        $dir = sys_get_temp_dir() . '/news-eval-' . bin2hex(random_bytes(4));
+        mkdir("$dir/responses", 0775, true);
+        file_put_contents("$dir/responses/adversarial.json", json_encode(['case' => 'adversarial', 'response' => $response]));
+        // Only the adversarial case: the recorded run names the case it belongs to.
+        exec(sprintf('php %s replay %s --check 2>&1', escapeshellarg(__DIR__ . '/../evals/run.php'), escapeshellarg($dir)), $out, $code);
+        array_map('unlink', glob("$dir/*/*") ?: []);
+        array_map('unlink', glob("$dir/*.json") ?: []);
+        rmdir("$dir/responses");
+        rmdir($dir);
+
+        return $code;
+    };
+    $bad = goodResponse();
+    $bad['selected'][] = ['id' => 'm999', 'title' => 'x', 'blurb' => 'x', 'summary' => 'Inventado. Mesmo.'];
+
+    assertSame(0, $run(goodResponse()), 'good edition');
+    assertSame(1, $run($bad), 'edition with an invented id');
 });
 
 fwrite(STDOUT, sprintf("\n%d passed, %d failed\n", $passed, $failed));
