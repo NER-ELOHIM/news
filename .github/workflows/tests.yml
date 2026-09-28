@@ -43,3 +43,8 @@ jobs:
       # on loopback.
       - name: Run the test suite
         run: php tests/run.php
+
+      # Re-scores the recorded baseline: proves the eval harness still works.
+      # It never calls the model, so it needs no key and costs nothing.
+      - name: Eval harness (replay)
+        run: php evals/run.php replay evals/baseline --check
