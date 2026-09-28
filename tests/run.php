@@ -569,5 +569,15 @@ check('the email subject agrees in number', function () {
 });
 
 
+check('bin/digest --estimate prints the cost table without a key', function () {
+    $items = json_encode(['contract' => 1, 'items' => [['key' => 'a', 'kind' => 'article', 'title' => 't',
+        'body' => 'b', 'ts' => '2026-09-28T00:00:00Z', 'meta' => ['topic' => 'saas', 'link' => 'https://x']]]]);
+    $cmd = sprintf('echo %s | env -u IODE_ANTHROPIC_API_KEY php %s --estimate 2>&1',
+        escapeshellarg($items), escapeshellarg(__DIR__ . '/../bin/digest'));
+    exec($cmd, $out, $code);
+    assertSame(0, $code, 'exit code (' . implode(' ', array_slice($out, 0, 3)) . ')');
+    assertTrue(str_contains(implode("\n", $out), 'per edition'), 'cost table missing');
+});
+
 fwrite(STDOUT, sprintf("\n%d passed, %d failed\n", $passed, $failed));
 exit($failed === 0 ? 0 : 1);
