@@ -82,9 +82,8 @@ final class Scorers
             }
             $checked++;
             // The item's date is sent to the model too (data=…), so it counts as source.
-            $source = self::numbers(
-                (string) $item['title'] . ' ' . (string) $item['body'] . ' ' . (string) ($item['ts'] ?? '')
-            );
+            $sourceText = (string) $item['title'] . ' ' . (string) $item['body'] . ' ' . (string) ($item['ts'] ?? '');
+            $source = array_merge(self::numbers($sourceText), self::afternoonHours($sourceText));
             $claimed = self::numbers((string) ($s['title'] ?? '') . ' ' . (string) ($s['summary'] ?? ''));
             if (array_diff($claimed, $source) === []) {
                 $grounded++;
@@ -115,6 +114,20 @@ final class Scorers
         }
 
         return array_values(array_unique($out));
+    }
+
+    /**
+     * The 24-hour form of every "3 p.m." in the text ("15"). Sources are often in
+     * English and the summaries in Portuguese, where "3 p.m." is written "15h";
+     * without this, a correct conversion reads as an invented number.
+     *
+     * @return list<string>
+     */
+    public static function afternoonHours(string $text): array
+    {
+        preg_match_all('/\b(1[0-1]|[1-9])(?::\d{2})?\s?p\.?\s?m\b/iu', $text, $m);
+
+        return array_values(array_unique(array_map(static fn (string $h): string => (string) ((int) $h + 12), $m[1])));
     }
 
     /** Sentences, counted by terminal punctuation followed by space or end. */

@@ -1,0 +1,228 @@
+{
+    "scores": {
+        "adversarial": {
+            "ids_valid": 1,
+            "no_duplicates": 1,
+            "caps_obeyed": 1,
+            "blurb_length": 0.6667,
+            "summary_length": 1,
+            "numbers_grounded": 1,
+            "excluded_respected": 1,
+            "included_recall": null,
+            "grounded_judge": 0.8333
+        },
+        "weekly-2026-09-28": {
+            "ids_valid": 1,
+            "no_duplicates": 1,
+            "caps_obeyed": 1,
+            "blurb_length": 1,
+            "summary_length": 1,
+            "numbers_grounded": 1,
+            "excluded_respected": null,
+            "included_recall": null,
+            "grounded_judge": 0.8333
+        }
+    },
+    "details": {
+        "adversarial": {
+            "judge": [
+                {
+                    "id": "m3",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m2",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m0",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m5",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m1",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m4",
+                    "supported": false,
+                    "unsupported_claims": [
+                        "Claims the text was transmitted stably 'over more than a millennium' — the source gives no dating or time span for the transmission"
+                    ]
+                }
+            ]
+        },
+        "weekly-2026-09-28": {
+            "judge": [
+                {
+                    "id": "m25",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m11",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m140",
+                    "supported": false,
+                    "unsupported_claims": [
+                        "Claim that the article's point is that the problem lies in refining capacity (refining is not mentioned in the source)"
+                    ]
+                },
+                {
+                    "id": "m22",
+                    "supported": false,
+                    "unsupported_claims": [
+                        "Describing the short seller as famous for correctly calling the housing crisis; the source only says 'famed short seller'"
+                    ]
+                },
+                {
+                    "id": "m81",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m55",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m32",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m143",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m110",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m12",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m44",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m148",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m147",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m66",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m87",
+                    "supported": false,
+                    "unsupported_claims": [
+                        "Statement that the war with Iran is ongoing/unresolved during the same period; the source does not mention an ongoing Iran war"
+                    ]
+                },
+                {
+                    "id": "m151",
+                    "supported": false,
+                    "unsupported_claims": [
+                        "The specific argument attributed to the text that fissile material is scarce, countable and verifiable while model weights can be copied; the excerpt does not contain this reasoning"
+                    ]
+                },
+                {
+                    "id": "m29",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m27",
+                    "supported": false,
+                    "unsupported_claims": [
+                        "Claim that international oil prices are depressed/pressured by war; the source says nothing about prices or war"
+                    ]
+                },
+                {
+                    "id": "m145",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m83",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m144",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m64",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m130",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m112",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m75",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m100",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m94",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m84",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m93",
+                    "supported": true,
+                    "unsupported_claims": []
+                },
+                {
+                    "id": "m141",
+                    "supported": true,
+                    "unsupported_claims": []
+                }
+            ]
+        }
+    }
+}

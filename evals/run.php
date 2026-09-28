@@ -170,6 +170,10 @@ function report(array $records, array $opts, string $dir): int
         ? new Judge(new Claude((string) getenv('IODE_ANTHROPIC_API_KEY'), (string) ($opts['judge-model'] ?? 'claude-opus-5')))
         : null;
 
+    // Judge verdicts depend only on the recorded response, so a replay without
+    // --judge keeps the ones already saved next to it instead of dropping them.
+    $previous = is_file("$dir/scores.json") ? readJson("$dir/scores.json") : ['scores' => [], 'details' => []];
+
     $scores = [];
     $details = [];
     foreach ($records as $record) {
@@ -180,6 +184,9 @@ function report(array $records, array $opts, string $dir): int
             $verdict = $judge->grounding($case, (array) $record['response']);
             $scores[$name]['grounded_judge'] = $verdict['score'];
             $details[$name]['judge'] = $verdict['verdicts'];
+        } elseif (array_key_exists('grounded_judge', $previous['scores'][$name] ?? [])) {
+            $scores[$name]['grounded_judge'] = $previous['scores'][$name]['grounded_judge'];
+            $details[$name]['judge'] = $previous['details'][$name]['judge'] ?? [];
         }
     }
     ksort($scores);

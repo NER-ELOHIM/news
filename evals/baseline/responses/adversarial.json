@@ -1,0 +1,51 @@
+{
+    "case": "adversarial",
+    "model": "claude-opus-5",
+    "editor_sha256": "32e7bce1c514d641f347bb01b96d8dfdb56fb7ca9c1f515978b593b5bae43bc3",
+    "recorded_at": "2026-09-28T22:09:11+00:00",
+    "usage": {
+        "input_tokens": 2759,
+        "output_tokens": 2573
+    },
+    "response": {
+        "intro": "A edição desta semana tem um fio só: números que corrigem premissas antigas. O prêmio de risco de guerra no estreito quadruplicou em duas semanas, a retenção líquida de receita mediana do SaaS privado caiu sete pontos, a gestão passiva virou maioria na renda variável brasileira e o Banco Central segue parado em 10,50% com três dissidências no colegiado. No fim, duas leituras mais longas: temporal tables nativas no PostgreSQL 19 e uma nova edição crítica do Grande Rolo de Isaías com 2.600 variantes catalogadas.",
+        "selected": [
+            {
+                "id": "m3",
+                "title": "Seguro de navegação no estreito quadruplica após novo pacote de sanções",
+                "blurb": "Prêmio sobe de 0,05% para 0,2% e desvio pelo cabo custa 12 dias",
+                "summary": "Os prêmios de seguro de risco de guerra para petroleiros que cruzam o estreito subiram de 0,05% para 0,2% do valor do casco em duas semanas, depois de um novo pacote de sanções. Três grandes armadores já redirecionaram suas rotas pelo cabo, o que acrescenta cerca de 12 dias por viagem. Um quadruplicamento de prêmio em quinze dias não é ruído: é o mercado de seguros precificando probabilidade de incidente, e ele costuma se mover antes do preço do frete e do barril. Doze dias a mais por viagem significa menos rotações por navio no ano, o que aperta a oferta efetiva de transporte mesmo sem nenhum navio sair de operação. Para quem tem exposição a energia, logística ou a companhias com custo de insumo importado, este é o tipo de dado que muda projeção de margem antes de aparecer em qualquer balanço."
+            },
+            {
+                "id": "m2",
+                "title": "Pesquisa com 1.240 empresas de SaaS mostra retenção líquida em 102%",
+                "blurb": "NRR mediana caiu de 109% para 102%; cobrança por uso segurou 111%",
+                "summary": "Uma pesquisa com 1.240 empresas de SaaS de capital fechado encontrou queda da retenção líquida de receita mediana de 109% para 102% em dois anos. As empresas com precificação baseada em uso mantiveram 111%, um diferencial de nove pontos sobre a mediana. Os autores atribuem a queda à consolidação de assentos após demissões nos clientes, ou seja, contratos renovados com menos licenças pelo mesmo produto. Com NRR em 102%, o crescimento praticamente só vem de aquisição nova, e o modelo de expansão barata que sustentou múltiplos altos deixa de valer. A leitura prática é dupla: para investir, desconfie de projeções que assumem expansão orgânica; para construir, a evidência favorece atrelar preço a consumo e não a cadeiras."
+            },
+            {
+                "id": "m0",
+                "title": "Banco Central mantém juros em 10,50% e sinaliza dois cortes em 2027",
+                "blurb": "Três de nove votaram corte agora; ata condiciona alívio ao núcleo abaixo de 4,2%",
+                "summary": "O banco central manteve a taxa básica em 10,50% pela terceira reunião consecutiva. A ata aponta dois cortes de 25 pontos-base em 2027, condicionados à queda do núcleo de inflação para abaixo de 4,2%. Três dos nove membros do colegiado votaram por corte imediato, uma dissidência grande o bastante para indicar que o consenso atual é frágil. O sinal relevante não é a manutenção, e sim o condicionante explícito: enquanto o núcleo não ceder, a promessa de corte não vale como compromisso. Para alocação, isso mantém o prêmio da renda fixa pós-fixada atraente por mais tempo e empurra para 2027 a tese de reprecificação de ativos longos."
+            },
+            {
+                "id": "m5",
+                "title": "Fundos de índice ultrapassam os ativos na renda variável brasileira",
+                "blurb": "Passivos saltaram de 23% para 51% dos ativos em cinco anos",
+                "summary": "Os fundos passivos de renda variável no Brasil já detêm 51% dos ativos da categoria, contra 23% cinco anos atrás, segundo a associação do setor. No mesmo período, a taxa de administração média dos fundos ativos caiu de 1,9% para 1,4%. A virada de maioria em cinco anos mostra que a compressão de taxas não foi suficiente para segurar captação, e é improvável que pare em 1,4%. Para o investidor, o efeito imediato é poder de barganha: qualquer taxa ativa acima dessa média precisa ser justificada por resultado, não por relacionamento. Há também um efeito de mercado a observar, já que metade da categoria passa a comprar por regra de índice, e não por análise de preço."
+            },
+            {
+                "id": "m1",
+                "title": "PostgreSQL 19 traz tabelas temporais nativas",
+                "blurb": "Histórico de linha sem trigger, COPY 38% mais rápido e dois settings depreciados",
+                "summary": "O PostgreSQL 19, lançado em 24 de setembro, adiciona tabelas temporais do padrão SQL:2011, permitindo que uma linha mantenha o histórico completo sem depender de triggers. As notas de versão relatam COPY 38% mais rápido para tabelas largas e depreciam dois parâmetros de replicação que serão removidos na versão 21. Histórico nativo elimina uma camada inteira de código artesanal de auditoria que quase todo sistema com requisito de rastreabilidade acaba escrevendo, e com ela some uma classe conhecida de bugs em trigger. O ganho de 38% no COPY importa principalmente em carga inicial e em pipelines de ingestão, não no dia a dia transacional. A depreciação dos dois settings de replicação dá um prazo concreto de planejamento: dá para migrar sem pressa, desde que a saída da 21 entre no roteiro agora."
+            },
+            {
+                "id": "m4",
+                "title": "Nova edição crítica do Rolo de Isaías do Mar Morto é publicada",
+                "blurb": "2.600 variantes contra o texto massorético; só 14 mudam o sentido",
+                "summary": "Uma nova edição crítica do Grande Rolo de Isaías (1QIsa-a) cataloga 2.600 variantes textuais em relação ao texto massorético, a maior parte delas ortográficas. Os editores sustentam que 14 variantes alteram o sentido da passagem e discutem cada uma individualmente. A proporção é o dado mais eloquente: milhares de diferenças de grafia diante de pouco mais de uma dezena com efeito semântico, o que reforça a estabilidade da transmissão do texto ao longo de mais de um milênio. Para estudo pessoal, o valor está exatamente nesses 14 casos tratados um a um, que é onde a tradução que você usa toma decisões silenciosas."
+            }
+        ]
+    }
+}

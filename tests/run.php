@@ -619,6 +619,10 @@ check('eval numbers are normalised across separators', function () {
     assertSame(Evals\Scorers::numbers('2,5 bilhões'), Evals\Scorers::numbers('2.5 billion'));
 });
 
+check('eval numbers accept a 12-hour time written in 24-hour form', function () {
+    assertSame(['15', '16'], Evals\Scorers::afternoonHours('moved from 3 p.m. to 4 pm (ET), not 12 a.m.'));
+});
+
 check('eval sentences ignore decimals and abbreviations', function () {
     assertSame(3, Evals\Scorers::sentences('A taxa ficou em 10,50%. O Dr. Silva comentou. Fim.'));
 });

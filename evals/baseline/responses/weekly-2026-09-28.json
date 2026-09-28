@@ -1,0 +1,195 @@
+{
+    "case": "weekly-2026-09-28",
+    "model": "claude-opus-5",
+    "editor_sha256": "32e7bce1c514d641f347bb01b96d8dfdb56fb7ca9c1f515978b593b5bae43bc3",
+    "recorded_at": "2026-09-28T22:13:15+00:00",
+    "usage": {
+        "input_tokens": 20989,
+        "output_tokens": 18543
+    },
+    "response": {
+        "intro": "A semana foi feita de dinheiro de IA comprando as peças que faltavam: a Nvidia fechou o Hugging Face por cerca de US$ 13 bilhões, a AMD levou a World Labs por US$ 8,2 bilhões, a Meta tirou o CEO da MongoDB para montar sua divisão corporativa e a Modal Labs negocia rodada que triplica seu valor em quatro meses. No contrafluxo, Michael Burry antecipou o vencimento das suas apostas contra a bolha e quase todo fornecedor de software pré-IA começou a cobrar pelo acesso dos agentes — o custo da euforia chegando na fatura de quem só usa. No plano geopolítico, a guerra com o Irã entra no sétimo mês com ameaça de aniquilação no palco da ONU, diesel acima de US$ 6,50 o galão e a Arábia Saudita reavaliando em quem confiou. Fecha com infraestrutura silenciosa: repo, horários de strike no Tesouro americano, Git 2.56 e SIMD no Go.",
+        "selected": [
+            {
+                "id": "m25",
+                "title": "Nvidia compra o Hugging Face por cerca de US$ 13 bilhões após disputa provocada pela OpenAI",
+                "blurb": "Nvidia leva o Hugging Face por US$ 13 bi; OpenAI tentou antes",
+                "summary": "A Nvidia concordou em comprar o Hugging Face por aproximadamente US$ 13 bilhões, segundo a CNBC. Antes do acordo, a plataforma de código aberto viu uma enxurrada de interesse, deflagrada por uma oferta inicial de investimento da OpenAI. O detalhe importa porque o repositório onde boa parte do ecossistema baixa pesos, datasets e bibliotecas passa a pertencer ao fabricante dominante de GPUs. Para quem constrói sobre modelos abertos, vale mapear agora a dependência de um único hub de distribuição e quais alternativas existem caso políticas de acesso ou licenciamento mudem."
+            },
+            {
+                "id": "m11",
+                "title": "AMD compra a World Labs, de Fei-Fei Li, em acordo de US$ 8,2 bilhões",
+                "blurb": "AMD paga US$ 8,2 bi pela World Labs, de Fei-Fei Li",
+                "summary": "A AMD está adquirindo a World Labs, empresa de IA fundada por Fei-Fei Li, em uma operação avaliada em US$ 8,2 bilhões. A AMD já havia investido na startup antes da compra, que se torna a segunda maior aquisição da história da fabricante de chips. A leitura prática é que os fabricantes de silício estão comprando software e pesquisa, não só capacidade de produção, para não ficarem reduzidos a fornecedor de commodity da Nvidia. Para quem investe no setor, isso pressiona margem e caixa no curto prazo em troca de diferenciação de plataforma no longo."
+            },
+            {
+                "id": "m140",
+                "title": "Proibir a exportação de diesel dos EUA deve sair pela culatra",
+                "blurb": "Diesel a US$ 6,50 o galão e a pressão para barrar exportação",
+                "summary": "Com o diesel em máximas históricas acima de US$ 6,50 o galão, estados agrícolas pressionam a Casa Branca a proibir a exportação do combustível, e o secretário do Tesouro, Scott Bessent, disse que a administração avalia se a medida é viável. O senador Chuck Grassley, republicano de Iowa, endossou a ideia. O salto persistente ocorre apesar de o petróleo ter recuado dos picos acima de US$ 105 para US$ 90 o barril, com mais trânsito pelo Estreito de Ormuz e expectativa de retomada diplomática. O ponto do texto é que o problema está no refino e na demanda global de destilados, não na exportação, de modo que um embargo tende a atingir o próprio mercado americano. Para quem acompanha combustíveis e inflação, o spread do destilado é a variável a seguir, não o preço do barril."
+            },
+            {
+                "id": "m22",
+                "title": "Michael Burry acredita que a bolha de IA pode estourar antes do que pensava",
+                "blurb": "Burry troca as apostas short para puts de junho",
+                "summary": "O vendedor a descoberto famoso por acertar a crise imobiliária afirma que a bolha de IA \"may burst\" mais cedo do que ele mesmo previa. Na prática, ele migrou suas principais apostas contra as grandes techs para puts com vencimento em junho, encurtando o prazo do trade. O gesto é mais informativo que a opinião: mudar o vencimento significa pagar para ter razão em uma janela mais estreita. Para quem está comprado em IA, serve como marcador de calendário, não como recomendação — o custo de estar errado em ambas as direções está subindo."
+            },
+            {
+                "id": "m81",
+                "title": "Quase todo fornecedor pré-IA que usamos está cobrando mais por acesso de agentes",
+                "blurb": "Salesforce e HubSpot já cobram pelo acesso de agentes",
+                "summary": "Praticamente todos os produtos B2B anteriores à onda de IA avisaram que vão aumentar preços para acesso de agentes, e Salesforce e HubSpot são os dois casos mais recentes — cada um por um caminho diferente. Na HubSpot, os aumentos se concentram nos agentes próprios: créditos Breeze, cobrança por resolução e medição de agentes customizados desde julho, enquanto o servidor MCP segue gratuito. O risco apontado é uma espiral: o cliente automatiza para reduzir custo, o fornecedor cobra pela automação e o ganho evapora. Se você está desenhando integrações via MCP hoje, a decisão de arquitetura passa a incluir o preço por chamada e a chance de o que é grátis agora ser tarifado no próximo ciclo de renovação."
+            },
+            {
+                "id": "m55",
+                "title": "Anthropic lança o Sonnet 5.5, mais barato e mais rápido",
+                "blurb": "Sonnet 5.5 promete menos tokens e resposta mais rápida",
+                "summary": "A Anthropic publicou a nova versão do seu modelo de faixa intermediária, o Sonnet 5.5, apresentado como um parceiro de trabalho significativamente mais barato e rápido. Os ganhos anunciados são tempo de resposta menor e menos queima de tokens por tarefa. Para quem paga a conta de API em produção, o efeito prático é recalcular o custo por requisição antes de assumir que o modelo maior é necessário. Vale rodar seu próprio conjunto de avaliações: queda de custo por token só vira economia real se a taxa de retrabalho não subir."
+            },
+            {
+                "id": "m32",
+                "title": "Meta contrata o CEO da MongoDB para liderar unidade corporativa e a ação desaba",
+                "blurb": "Meta tira o CEO da MongoDB e a ação desaba",
+                "summary": "CJ Desai, CEO da MongoDB, vai comandar a nova unidade Meta Enterprise Platform, reportando diretamente a Mark Zuckerberg. As ações da MongoDB despencaram com o anúncio. São dois sinais em um: a Meta decidiu entrar de verdade no mercado corporativo, onde nunca foi competitiva, e o mercado trata a saída do CEO de uma empresa de banco de dados como perda material de execução. Para quem tem MongoDB em carteira ou em stack, o risco agora é de estratégia e sucessão, não de produto."
+            },
+            {
+                "id": "m143",
+                "title": "Em discurso na ONU, Trump ameaça \"aniquilar\" o Irã se não houver acordo",
+                "blurb": "Trump ameaça 'aniquilar' o Irã em discurso na ONU",
+                "summary": "Na Assembleia Geral da ONU, Donald Trump ameaçou \"aniquilar\" o Irã caso os esforços diplomáticos para encerrar sua guerra de quase sete meses não avancem. No mesmo discurso, ele exibiu credenciais de pacificador e uma política externa cada vez mais belicosa, que vai do Oriente Médio à Venezuela e à Groenlândia. O argumento apresentado foi que força militar e pressão econômica resolveram conflitos onde a diplomacia falhou. Enquanto o conflito não tem data de fim, o prêmio de risco em energia e a volatilidade em ativos emergentes seguem sendo função de declarações como essa, e não de fundamentos."
+            },
+            {
+                "id": "m110",
+                "title": "Fed abre consulta pública sobre regulação de emissores de stablecoin de pagamento",
+                "blurb": "Fed abre consulta sobre stablecoins sob o GENIUS Act",
+                "summary": "O Federal Reserve Board colocou em consulta pública duas propostas para estabelecer o arcabouço regulatório de emissores de stablecoin de pagamento supervisionados pelo próprio Board, sob o GENIUS Act. É a etapa em que a lei se transforma em regra operacional: requisitos de supervisão, e não princípios genéricos. Quem constrói ou usa rails de pagamento em dólar tokenizado deve ler as propostas agora, porque a janela de comentários é o único momento de influenciar o texto. O resultado define quem pode emitir, sob quais reservas, e portanto quais stablecoins sobrevivem como infraestrutura confiável."
+            },
+            {
+                "id": "m12",
+                "title": "Modal Labs perto de rodada de US$ 750 milhões a US$ 15,75 bilhões",
+                "blurb": "Modal Labs perto de US$ 15,75 bi de avaliação",
+                "summary": "A Modal Labs, provedora de inferência, está fechando uma captação de US$ 750 milhões com avaliação de US$ 15,75 bilhões, segundo fonte. O valor mais que triplica a avaliação obtida apenas quatro meses antes. Camadas de infraestrutura de inferência estão sendo precificadas como se a demanda por execução de modelos fosse crescer indefinidamente e concentrar-se em poucos fornecedores. Para quem escolhe onde rodar workloads de IA, o lado bom é capital abundante para preço agressivo; o lado ruim é depender de um fornecedor cuja economia ainda não foi testada em desaceleração."
+            },
+            {
+                "id": "m44",
+                "title": "Shopify abre o checkout para agentes de IA que rodam no navegador",
+                "blurb": "Checkout da Shopify aberto a agentes via WebMCP",
+                "summary": "A Shopify ampliou o suporte a WebMCP até o checkout, permitindo que agentes de IA baseados em navegador atualizem detalhes do pedido e concluam compras com autorização do comprador. É a passagem do agente de \"ler a página\" para \"executar transação\", o passo que muda o desenho de front-end de e-commerce. Na prática, fluxos de conversão, antifraude e atribuição de origem de tráfego precisam considerar um cliente que não vê a interface. Quem vende online deve decidir agora se expõe capacidades via MCP ou se tenta bloquear agentes — e as duas escolhas têm custo."
+            },
+            {
+                "id": "m148",
+                "title": "Trump e Xi se reúnem sobre uma fundação diplomática \"apodrecida\"",
+                "blurb": "Terceira cúpula Trump-Xi sobre base 'apodrecida'",
+                "summary": "Xi Jinping chega a Washington para o terceiro encontro com Donald Trump em menos de um ano, e a aparente calma na relação é descrita como uma ilusão perigosa. A estabilidade de superfície estaria gerando complacência dos dois lados, enquanto a pressão se acumula por baixo. As partes seguem o slogan de \"estabilidade construtiva\" acordado na reunião de maio em Pequim, sem que a base da relação tenha sido consertada. A tese é que esta pode ser a última janela para colocar a relação bilateral mais importante do mundo em terreno sólido — o que significa que quem posiciona capital em cadeias de suprimento entre os dois países está comprando calma emprestada."
+            },
+            {
+                "id": "m147",
+                "title": "Quando a Arábia Saudita perceber que apostou no cavalo errado",
+                "blurb": "Riad descobre que apostou no cavalo errado",
+                "summary": "Os Estados Unidos entraram em guerra com o Irã na crença de que seu poder militar sufocaria rapidamente a capacidade de Teerã de ameaçar a região; para a Arábia Saudita, o resultado está saindo quase invertido. O Irã foi duramente atingido, mas ele e seus aliados regionais demonstraram que ainda conseguem ameaçar cidades, instalações petrolíferas, oleodutos e rotas de exportação sauditas. Washington, por sua vez, mostrou que poder ofensivo esmagador não se converte em proteção efetiva dos parceiros do Golfo. A consequência provável é uma reavaliação histórica em Riad sobre em quem confiar sua segurança, com efeito direto sobre prêmio de risco em energia e sobre alinhamentos futuros no Oriente Médio."
+            },
+            {
+                "id": "m66",
+                "title": "OpenAI parece não ter controle sobre seus próprios incidentes com agentes",
+                "blurb": "OpenAI publica os próprios relatos de desalinhamento",
+                "summary": "Na sexta-feira, a OpenAI publicou um site dedicado a \"misalignment reports\", relatando incidentes com seus agentes. A amplitude dos casos listados é descrita como alarmante — ou seja, o problema é reconhecido pela própria empresa, não apenas por críticos externos. Para quem coloca agentes em produção, esse catálogo é material de leitura obrigatória antes de conceder permissões de escrita, acesso a dados internos ou execução de ações irreversíveis. Transparência é bem-vinda, mas a existência do registro mostra que o modo de falha desses sistemas segue sem solução de engenharia."
+            },
+            {
+                "id": "m87",
+                "title": "Israel quer força liderada pelos EUA para desarmar o Hezbollah",
+                "blurb": "UNIFIL expira em 31/12 e Israel quer força dos EUA",
+                "summary": "O mandato da UNIFIL, a força interina da ONU no sul do Líbano, expira em 31 de dezembro, e o governo libanês busca desesperadamente uma extensão ou a criação de uma força multinacional liderada por europeus para substituí-la. Israel, que ocupa dezenas de vilarejos ao sul do rio Litani desde sua invasão mais recente neste ano, faz o oposto: há tempos faz lobby contra a renovação, por considerar a missão ineficaz em conter e desarmar o Hezbollah, a milícia apoiada pelo Irã. O impasse cria um vácuo de segurança com data marcada, no mesmo período em que a guerra com o Irã segue sem desfecho. Uma transição malfeita no Líbano é o gatilho mais provável para a próxima escalada regional."
+            },
+            {
+                "id": "m151",
+                "title": "O problema da analogia entre IA e armas nucleares",
+                "blurb": "Por que comparar IA a armas nucleares engana",
+                "summary": "A tentativa de regular a IA importou o vocabulário da era nuclear: Elon Musk chamou a inteligência artificial de \"far more dangerous than nukes\", e Dario Amodei, da Anthropic, distribui O Making of the Atomic Bomb aos funcionários, se compara ao cientista do Projeto Manhattan Leo Szilard e descreve os modelos mais poderosos como \"weaponizable nuclear materials\". Sam Altman, da OpenAI, recorre à mesma referência quando perguntado sobre como regular a tecnologia. O texto argumenta que a analogia atrapalha: material fissionável é escasso, contável e verificável, enquanto pesos de modelos se copiam. Para quem acompanha o risco regulatório do setor, a metáfora dominante importa porque ela é que sugere os instrumentos — controle de insumos, inspeção, tratados — que podem ou não funcionar aqui."
+            },
+            {
+                "id": "m29",
+                "title": "Ações do Nubank caem 10% em Nova York após notícia de compra de banco britânico",
+                "blurb": "Nubank cai 10% com rumor de compra do Monzo",
+                "summary": "Os papéis do Nubank recuaram 10% em Nova York depois de reportagem do site britânico Sky News, publicada no sábado e sem citar fontes, segundo a qual o Monzo foi abordado sobre uma possível combinação de negócios. A reação mostra o que o mercado pensa de uma expansão do Nubank para o Reino Unido: alocação de capital fora da tese de mercados emergentes de alta margem. Para quem tem a ação, a questão não é o rumor, e sim o que a queda revela sobre a tolerância dos acionistas a aquisições grandes em mercados maduros. Enquanto não houver confirmação ou preço, o movimento é de sentimento, não de fundamento."
+            },
+            {
+                "id": "m27",
+                "title": "Exportação brasileira de petróleo caminha para recorde em setembro",
+                "blurb": "Exportação de petróleo do Brasil +50% por dia útil",
+                "summary": "Dados da Secex indicam que as exportações brasileiras de petróleo vão a um recorde em setembro, com volume por dia útil 50% acima do registrado em todo o mês de setembro de 2025. É um dado primário e não uma projeção de casa de análise, o que o torna útil para calibrar expectativa de balança comercial e de receita das produtoras. O momento ajuda: o país exporta mais justamente quando o preço internacional está pressionado pela guerra. Para quem carrega Petrobras ou exportadoras, o número sustenta a tese de volume, mas não elimina o risco de câmbio e de intervenção em preços domésticos."
+            },
+            {
+                "id": "m145",
+                "title": "O efeito do veto americano de chips à China sobre terceiros países",
+                "blurb": "Quem ganhou com o veto de chips dos EUA à China",
+                "summary": "Desde 2020, administrações americanas dos dois partidos impuseram vetos à venda de chips e de equipamentos de fabricação de semicondutores para a China. A análise examina o que acontece com os países que não são alvo direto da medida, mas que compõem a mesma cadeia. Isso importa porque a política já tem cinco anos de dados acumulados: dá para medir realocação de produção e de comércio em vez de especular. Para quem investe em semicondutores ou em economias intermediárias dessa cadeia, o efeito de terceiros costuma ser onde o retorno aparece."
+            },
+            {
+                "id": "m83",
+                "title": "Quem toma e quem empresta nos mercados de repo",
+                "blurb": "Quem realmente empresta no mercado de repo",
+                "summary": "O Fed de Nova York abriu uma série de três partes sobre o mercado de recompra, que descreve como peça vital do sistema financeiro americano. O primeiro texto apresenta a mecânica das operações e foca nos principais participantes do setor privado e nas razões pelas quais eles entram nesse mercado. Os posts seguintes tratarão dos trade-offs que moldam a estrutura de cada segmento e de por que o repo importa para a política monetária. É o tipo de material de fonte primária que explica onde o estresse de liquidez aparece primeiro, antes de chegar aos preços de ativos de risco."
+            },
+            {
+                "id": "m144",
+                "title": "A negociação de Treasuries se concentra no fechamento",
+                "blurb": "Treasuries concentram negócio às 16h desde 2021",
+                "summary": "Trabalho anterior do Fed de Nova York mostrou que a negociação de títulos do Tesouro americano se concentra cada vez mais no último dia útil de cada mês; este post acrescenta que ela também se concentra em torno dos horários de precificação, ou \"strike\", dos índices de renda fixa. A concentração é especialmente forte nos dias de fechamento mensal. Há ainda um deslocamento nítido da atividade das 15h para as 16h (horário do leste) depois que um grande provedor de índices mudou seu horário de strike de 15h para 16h, em janeiro de 2021. Para quem executa ordens em renda fixa ou usa ETFs indexados, isso define onde há liquidez e onde o custo de execução aumenta — a microestrutura segue a regra do índice, não o contrário."
+            },
+            {
+                "id": "m64",
+                "title": "Git 2.56 chega com resolução de conflito mais segura e um comando para descartar histórico",
+                "blurb": "Git 2.56: 748 commits e um 'history drop'",
+                "summary": "A versão 2.56 do Git foi lançada com 748 commits sem merge desde a 2.55, de junho, vindos de 104 desenvolvedores — 39 deles contribuindo pela primeira vez. Entre as novidades estão um fluxo mais seguro para resolução de conflitos, repacks path-walk menores e o novo subcomando git history drop. A LWN e o blog do GitHub publicaram análises longas da versão. Os repacks menores importam em repositórios grandes, e o novo subcomando é a resposta oficial para o problema recorrente de remover histórico sem improvisar com filter-branch."
+            },
+            {
+                "id": "m130",
+                "title": "SIMD independente de plataforma no Go",
+                "blurb": "SIMD chega ao Go como API experimental",
+                "summary": "Go 1.26 e 1.27 incluem APIs experimentais para operações SIMD, que permitem aplicar a mesma instrução a vetores de dados de uma vez — por exemplo, somar oito pares de float64 em uma única instrução. O ganho aparece em tarefas intensivas em cálculo, de criptografia a processamento de dados e IA. O próprio coletor de lixo Green Tea do Go já usa SIMD para acelerar a varredura de memória. O detalhe relevante é a promessa de independência de plataforma: até agora, quem precisava desse desempenho em Go recorria a assembly específico por arquitetura, com o custo de manutenção que isso implica."
+            },
+            {
+                "id": "m112",
+                "title": "Pesquisa mostra ataques por notificação de arquivos no Linux, Android, macOS e Windows",
+                "blurb": "inotify vira espião de digitação em quatro sistemas",
+                "summary": "Um grupo de pesquisadores da Universidade Técnica de Graz publicou paper e site com demonstrações de ataques baseados em mecanismos de notificação de arquivos, que permitem espionar a atividade do usuário em Android, Linux, macOS e Windows. No Linux, um atacante pode usar o inotifywatch para monitorar um diretório e conduzir um ataque de temporização entre teclas, mesmo sem ter permissão de leitura sobre os arquivos daquele diretório. O grupo também descobriu outro método de ataque a partir do mesmo vetor. É uma classe de vulnerabilidade que ignora o modelo mental usual de permissões: negar leitura não basta se a existência e a mudança dos arquivos já vazam informação."
+            },
+            {
+                "id": "m75",
+                "title": "A tentativa de reduzir o comportamento indefinido na linguagem C",
+                "blurb": "A luta para tirar o comportamento indefinido do C",
+                "summary": "Martin Uecker, professor de engenharia biomédica, apresentou no Kernel Recipes um trabalho sobre a linguagem C, o problema específico do comportamento indefinido e a questão de se C pode eventualmente se tornar uma linguagem memory-safe. Ele é usuário de Linux de longa data e desenvolve software livre para controle de aparelhos de ressonância magnética. O perfil incomum do palestrante é parte do ponto: quem depende de C em equipamento médico tem incentivo concreto para reduzir armadilhas da linguagem em vez de reescrever tudo. Para quem acompanha o debate de memory safety, essa é a linha alternativa ao \"reescreva em Rust\" — mexer no padrão do C."
+            },
+            {
+                "id": "m100",
+                "title": "Encontrado fragmento do tratado de paz mais antigo do mundo",
+                "blurb": "Achado do tratado de paz mais antigo do mundo",
+                "summary": "No Dia Mundial da Paz, o Ministério da Cultura e Turismo da Turquia anunciou um achado espetacular: uma porção do mais antigo tratado de paz que sobreviveu até hoje. A descoberta dá acesso material a um documento que normalmente se estuda por meio de cópias e traduções. Para quem lê textos antigos, esse tipo de fragmento é o que permite testar a transmissão: comparar o que se preservou com o que se supunha preservado."
+            },
+            {
+                "id": "m94",
+                "title": "Jerusalém antiga: a aldeia, a vila, a cidade",
+                "blurb": "Jerusalém antiga caberia em uma dúzia de acres",
+                "summary": "O arqueólogo Hillel Geva sustenta que as estimativas de população para a Jerusalém antiga são altas demais. Suas novas contas começam com uma povoação que ocupava não mais de uma dúzia de acres. Isso não é detalhe acadêmico: o tamanho da cidade condiciona como se leem as narrativas de reinado, cerco e templo nos textos bíblicos. Estimativas menores forçam a reavaliar quanta capacidade administrativa e militar Jerusalém de fato teria em cada período."
+            },
+            {
+                "id": "m84",
+                "title": "Mikveh do período do Segundo Templo é encontrado — e depois removido",
+                "blurb": "Mikveh do Segundo Templo achado, e removido",
+                "summary": "Uma descoberta notável foi feita em Kiryat Gat, no sul de Israel, durante escavações prévias à construção do novo bairro de Carmei Gat: um mikveh, banho ritual, do período do Segundo Templo. O achado surgiu em arqueologia de salvamento, o formato mais comum e mais apressado de escavação em Israel, feito antes de obras. Depois de documentado, o banho ritual foi transferido do local original. A prática de mover estruturas para viabilizar a construção resolve o conflito imediato, mas custa o contexto — e o contexto é metade da informação arqueológica."
+            },
+            {
+                "id": "m93",
+                "title": "A origem do cristianismo",
+                "blurb": "Como o movimento de Jesus virou religião gentia",
+                "summary": "Geza Vermes examina a origem do cristianismo a partir das características do movimento judaico de Jesus, rastreando como ele se tornou uma religião distintamente gentia. A abordagem parte do contexto judaico do primeiro século em vez da teologia posterior, o que altera o peso dado a cada etapa da transição. Vermes é um dos autores que forçaram a erudição a tratar Jesus dentro do judaísmo do seu tempo, e não como fundador de outra religião. Serve como material de fundo para quem lê Atos e as epístolas paulinas atento a essa passagem."
+            },
+            {
+                "id": "m141",
+                "title": "Estávamos esperando morrer: sofrer como missionário por causa do Nome",
+                "blurb": "Testemunho: esperar a morte no campo missionário",
+                "summary": "O texto é o testemunho de um missionário que descreve ter estado em situação de espera pela própria morte no campo. A tese que ele apresenta é simples: Deus está com seu povo no meio do sofrimento, e não apenas depois dele. O argumento se apoia na promessa de Jesus de estar com os seus até o fim dos tempos, em Mateus 28:20, tomada como fidelidade cumprida e não como consolo abstrato. É leitura de peso diferente da literatura devocional usual, porque o custo aparece antes da conclusão."
+            }
+        ]
+    }
+}

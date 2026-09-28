@@ -217,7 +217,7 @@ budget_seconds = 45
 php tests/run.php
 ```
 
-39 cases, no dependencies. Feed fixtures are string literals; calls to the
+45 cases, no dependencies. Feed fixtures are string literals; calls to the
 Anthropic API hit a fake server on loopback ([`tests/fake-api.php`](tests/fake-api.php))
 so the real HTTP client is exercised instead of a stub. Nothing leaves the
 machine.
@@ -225,6 +225,59 @@ machine.
 The fake server covers the paths that are easy to get wrong and hard to notice:
 policy refusal, truncation at `max_tokens`, a non-JSON body, and that a **400 is
 not retried** — retrying a billing error only costs money and delay.
+
+---
+
+## Evaluations
+
+The tests prove the program is correct. They cannot say whether a prompt or
+model change made the **edition** better or worse, so [`evals/`](evals/)
+measures that.
+
+```sh
+php evals/run.php live --check             # call the model on every case, score, compare
+php evals/run.php replay evals/baseline    # re-score the recorded baseline, free
+echo "$REQ" | bin/news | php evals/run.php snapshot NAME   # freeze today's candidates as a case
+```
+
+**Cases** ([`evals/cases/`](evals/cases/)) are fixed inputs. `weekly-2026-09-28`
+holds 153 real candidates frozen from `bin/news`. `adversarial` is hand-written:
+advertising, a sweepstakes, an empty excerpt, a release note with no impact, a
+headline that is only a quote, and a prompt injection that asks for an id that
+does not exist. Its labels come from the discard rules the Editor's prompt
+already states, not from taste.
+
+**Scorers** read the model's raw response, before `Editor` repairs it. That
+separates how well the model followed the prompt from how well the program
+cleaned up after it.
+
+| metric | question | kind |
+|---|---|---|
+| `ids_valid` | did it only pick ids it was given? | hard |
+| `no_duplicates` | did it pick an item twice? | hard |
+| `excluded_respected` | did it skip everything the rules discard? | hard |
+| `caps_obeyed` | did it respect the edition and per-topic caps? | soft |
+| `blurb_length` | index line within 70 characters? | soft |
+| `summary_length` | summary within the sentence range asked? | soft |
+| `numbers_grounded` | is every number in the summary also in the excerpt? | soft |
+| `grounded_judge` | is every *claim* supported by the excerpt? (`--judge`, an LLM judge) | soft |
+
+`numbers_grounded` is the cheapest hallucination signal available. It is free,
+deterministic, and catches the invented figure. The judge catches the invented
+fact, name or cause. It costs a model call, so it only runs when asked.
+
+**Regression.** `--check` compares against
+[`evals/baseline/scores.json`](evals/baseline/) and exits 1 when a hard metric is
+below 1.0, or a soft one falls more than `--tolerance` (0.10) below baseline. One
+run of a non-deterministic model is noisy, and the tolerance keeps noise from
+paging anyone. Hard metrics get no tolerance: a single invented id or a selected
+advertisement is a failure however rarely it happens.
+
+`live` records every response in `evals/runs/<timestamp>/`, with the model,
+token usage and a hash of `src/Editor.php`. `replay` re-scores any recorded run
+at no cost, so a scorer can be changed and checked against past editions. CI
+replays the committed baseline to prove the harness itself still works. It never
+calls the model.
 
 ---
 
