@@ -32,7 +32,7 @@ send flag means nothing leaves the machine**.
 
 ```sh
 bin/news --temas                                 # list catalog topics
-echo "$REQ" | bin/news | bin/digest --estimar    # cost, before spending
+echo "$REQ" | bin/news | bin/digest --estimate   # cost, before spending
 echo "$REQ" | bin/news | bin/digest --json       # edition to stdout, no delivery
 bin/revista                                      # the whole thing, one command
 ```
@@ -149,7 +149,7 @@ would mean putting the password on the wire in the clear.
 
 ## Cost
 
-`--estimar` computes it before you spend anything, from a real collection:
+`--estimate` computes it before you spend anything, from a real collection:
 
 ```
 model                per edition   per month   per year

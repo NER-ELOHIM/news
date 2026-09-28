@@ -123,7 +123,7 @@ function main(array $argv): int
     // to the model and what that would cost, which is what you want to know
     // before wiring up a recurring job.
     if (isset($opts['estimate'])) {
-        estimar($items, (string) ($opts['cadence'] ?? 'weekly'), (float) ($opts['rate'] ?? 0), isset($opts['full']));
+        estimate($items, (string) ($opts['cadence'] ?? 'weekly'), (float) ($opts['rate'] ?? 0), isset($opts['full']));
         return 0;
     }
 
