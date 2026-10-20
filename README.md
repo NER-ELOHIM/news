@@ -311,3 +311,12 @@ and each feed family announces one differently — `media:content`, `enclosure`,
 or an `<img>` buried in the description HTML. An article had to look finished
 without a picture, so a missing image removes a block rather than leaving a
 hole.
+
+## Archive
+
+Every edition `bin/digest` builds is kept as gzipped JSON in
+`~/.local/share/issacar/editions/YYYY-MM-DD.json.gz` (or `IODE_NEWS_ARCHIVE`),
+about 8 KB each. Editions older than 12 weeks are folded into `index.jsonl`
+(date, topic, title, link) and deleted, on every save, so the archive stays
+under a few MB with nothing to maintain. `bin/digest --latest` prints the last
+edition; `--no-archive` skips saving. The weekly LinkedIn reflection reads it.

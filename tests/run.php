@@ -23,6 +23,7 @@ require __DIR__ . '/../src/Claude.php';
 require __DIR__ . '/../src/Editor.php';
 require __DIR__ . '/../src/Render.php';
 require __DIR__ . '/../src/Telegram.php';
+require __DIR__ . '/../src/Archive.php';
 require __DIR__ . '/../evals/Scorers.php';
 
 $passed = 0;
@@ -669,6 +670,27 @@ check('eval replay --check exits 1 on a hard regression and 0 otherwise', functi
 
     assertSame(0, $run(goodResponse()), 'good edition');
     assertSame(1, $run($bad), 'edition with an invented id');
+});
+
+check('archive keeps recent editions and folds old ones into the index', function () {
+    $dir = sys_get_temp_dir() . '/news-archive-' . bin2hex(random_bytes(4));
+    $archive = new Archive($dir);
+    $edition = fn (string $title) => ['intro' => 'x', 'articles' => [
+        ['topic' => 'ai', 'title' => $title, 'summary' => 's', 'link' => 'https://example.com/' . $title],
+    ]];
+    $archive->save($edition('old'), new \DateTimeImmutable('2026-01-04'));
+    $archive->save($edition('new'), new \DateTimeImmutable('2026-10-18'));
+
+    assertTrue(!is_file("$dir/2026-01-04.json.gz"), 'edition older than 12 weeks should be folded');
+    assertTrue(is_file("$dir/2026-10-18.json.gz"), 'recent edition should stay');
+    $index = array_map(fn ($l) => json_decode($l, true), array_filter(explode("\n", (string) file_get_contents("$dir/index.jsonl"))));
+    assertSame(1, count($index), 'index lines');
+    assertSame('old', $index[0]['title'], 'folded title');
+    assertSame('https://example.com/old', $index[0]['link'], 'folded link');
+    assertSame('new', $archive->latest()['articles'][0]['title'], 'latest edition');
+
+    array_map('unlink', glob("$dir/*") ?: []);
+    rmdir($dir);
 });
 
 fwrite(STDOUT, sprintf("\n%d passed, %d failed\n", $passed, $failed));

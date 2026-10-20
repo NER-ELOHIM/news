@@ -32,6 +32,7 @@ require __DIR__ . '/../src/Editor.php';
 require __DIR__ . '/../src/Render.php';
 require __DIR__ . '/../src/Telegram.php';
 require __DIR__ . '/../src/Mailer.php';
+require __DIR__ . '/../src/Archive.php';
 
 // Definida antes do exit() abaixo: uma const de topo é avaliada na ordem do
 // arquivo, então declará-la depois da chamada faria --help morrer com
@@ -54,6 +55,8 @@ OPTIONS
   --cap=N            maximum articles in the edition (12; 30 with --full)
   --topic-cap=N      maximum per topic (2; 6 with --full)
   --model=ID         Anthropic model (default claude-opus-5)
+  --no-archive       do not keep this edition in the archive
+  --latest           print the latest archived edition as JSON and exit
   -h, --help         this help
 
 Without --email and without --telegram nothing is sent: the edition goes to
@@ -68,6 +71,7 @@ ENVIRONMENT
   IODE_SMTP_USER           SMTP user
   IODE_SMTP_PASS           app password, never the account password
   IODE_SMTP_FROM           sender; defaults to IODE_SMTP_USER
+  IODE_NEWS_ARCHIVE        archive directory; defaults to ~/.local/share/issacar/editions
 
 TXT;
 
@@ -79,6 +83,18 @@ function main(array $argv): int
     $opts = parseArgs($argv);
     if (isset($opts['help'])) {
         fwrite(STDOUT, HELP);
+        return 0;
+    }
+
+    // The archive is read by the weekly reflection step; this prints the last
+    // edition without collecting or calling the model.
+    if (isset($opts['latest'])) {
+        $latest = Archive::fromEnv()->latest();
+        if ($latest === null) {
+            fwrite(STDERR, "the archive is empty\n");
+            return 3;
+        }
+        fwrite(STDOUT, json_encode($latest, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n");
         return 0;
     }
 
@@ -143,6 +159,17 @@ function main(array $argv): int
     } catch (ClaudeError $e) {
         fwrite(STDERR, 'edition failed: ' . $e->getMessage() . "\n");
         return 1;
+    }
+
+    // Keep the edition before delivering it: the model call is already paid,
+    // and a failed channel should not lose the content. Archiving problems
+    // are reported but never stop delivery.
+    if (!isset($opts['no-archive'])) {
+        try {
+            fwrite(STDERR, 'archived: ' . Archive::fromEnv()->save($edition, $now) . "\n");
+        } catch (\RuntimeException | \JsonException $e) {
+            fwrite(STDERR, 'archive failed: ' . $e->getMessage() . "\n");
+        }
     }
 
     $html = Render::html($edition, $now);
