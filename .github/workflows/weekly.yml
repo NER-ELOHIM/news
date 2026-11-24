@@ -5,8 +5,11 @@ name: weekly edition
 # is acceptable. What is not acceptable is depending on a laptop being awake,
 # which is what the systemd timer required.
 on:
-  schedule:
-    - cron: "0 12 * * 0"
+  # Paused 2026-11-24: the Anthropic account ran out of credit, so every
+  # scheduled run failed at the API call (HTTP 400, "credit balance is too
+  # low"). Restore the schedule once credit is added; manual runs still work.
+  # schedule:
+  #   - cron: "0 12 * * 0"
   # Lets the edition be fired by hand, which is also how it gets tested without
   # waiting for Sunday.
   workflow_dispatch:
